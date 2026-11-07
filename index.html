@@ -1,25 +1,25 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>G-Green AutoEdit</title><style>
 :root{font-family:Inter,Arial,sans-serif;color:#181818;background:#f5f5f6}*{box-sizing:border-box}body{margin:0}header{background:white;border-bottom:1px solid #ddd;padding:16px max(24px,calc((100vw - 1180px)/2));display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:22px}.mark{width:43px;height:43px;background:#111;color:white;border:5px solid #f58220;border-radius:50%;display:grid;place-items:center;font-weight:900}.orange{color:#f58220}main{max-width:1180px;margin:32px auto;padding:0 18px}h1{margin-bottom:5px}p,.muted{color:#6b6b72}section{background:white;border:1px solid #e4e4e8;border-radius:16px;padding:22px;margin-bottom:20px}.layout{display:grid;grid-template-columns:320px 1fr;gap:20px}label{display:block;font-size:13px;font-weight:700;margin:15px 0 7px}input[type=text],select,input[type=file]{width:100%;border:1px solid #ddd;border-radius:9px;padding:12px;background:white}button{border:0;border-radius:9px;padding:12px 16px;font-weight:700;cursor:pointer;background:#eee;color:#171717}button.primary{background:#f58220;color:white}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.photo{width:100%;max-height:440px;object-fit:contain;background:#f5f5f6;border-radius:10px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.compare figure{margin:0}.compare figcaption{font-size:13px;font-weight:700;margin-bottom:8px}.empty{display:grid;place-items:center;height:300px;background:#f5f5f6;color:#888;border:1px dashed #ccc;border-radius:10px}.thumbs{display:flex;gap:9px;overflow:auto;margin-top:16px}.thumbs button{padding:3px;border:2px solid transparent;background:white}.thumbs button.active{border-color:#f58220}.thumbs img{width:82px;height:66px;object-fit:cover;border-radius:5px}.slider{display:flex;align-items:center;gap:10px}.slider input{flex:1;accent-color:#f58220}.slider output{min-width:38px;text-align:right}.note{background:#fff3e8;border-radius:10px;padding:12px;font-size:13px;color:#704016;margin-top:14px}@media(max-width:800px){.layout,.compare{grid-template-columns:1fr}main{margin-top:18px}}
-</style></head><body><header><div class="brand"><div class="mark">G</div><span>G-Green <span class="orange">AutoEdit</span></span></div><small>Professional photo workspace · v1.2</small></header><main><h1>Photo editing workspace · AutoEdit v1.2</h1><p>Preview, tune and export photos in your browser. Your original files remain on your device.</p><div class="layout"><div><section><h3>Project setup</h3><label>Project name</label><input id="project" type="text" placeholder="e.g. Saturday funeral coverage"><label>Editing style</label><select id="preset"><option value="premium">Premium Natural</option><option value="bright">Bright Indoor</option><option value="shade">Outdoor Shade</option><option value="neutral">Neutral</option><option value="auto">Auto · analyse each photo</option></select><label>Editing mode</label><select id="mode"><option value="auto">Auto-edit every photo (recommended)</option><option value="manual">Manual preset + sliders</option></select><label>Choose photos</label><input id="files" type="file" accept="image/*" multiple><div class="actions"><button id="process" class="primary" disabled>Auto-edit selected photos</button></div><div class="note">Live browser test build v1.2: improved regional tone recovery; images are not uploaded to Afrihost. Supports images your browser can decode. No automatic Windows folder monitoring yet.</div></section><section><h3>Fine-tune selected photo</h3><p class="muted">Adjustments are applied on top of automatic corrections. Drag any slider to update the preview.</p><div id="sliders"></div><div class="actions"><button id="reset">Reset</button><button id="save" class="primary" disabled>Export current JPG</button><button id="all" disabled>Export all JPGs</button></div><p class="muted" id="status" aria-live="polite"></p></section></div><div><section><h3>Before / After</h3><div class="compare"><figure><figcaption>Original</figcaption><div id="originalEmpty" class="empty">Choose a photo</div><img id="original" class="photo" hidden></figure><figure><figcaption>Edited preview</figcaption><div id="editedEmpty" class="empty">Choose a photo</div><canvas id="canvas" class="photo" hidden></canvas></figure></div><div id="thumbs" class="thumbs"></div></section><section><h3>Processing status</h3><div id="progress" class="muted">Choose up to five photos to start. Larger batches are also supported.</div><p>Experimental regional shadow recovery and black-point protection are available for browser-supported images. RAW conversion, selective subject masking, watch folders and background processing are not implemented yet.</p></section></div></div></main><script>
+</style></head><body><header><div class="brand"><div class="mark">G</div><span>G-Green <span class="orange">AutoEdit</span></span></div><small>Professional browser photo suite · v2.0</small></header><main><h1>Photo editing workspace · AutoEdit v2.0</h1><p>Preview, tune and export photos in your browser. Your original files remain on your device.</p><div class="layout"><div><section><h3>Project setup</h3><label>Project name</label><input id="project" type="text" placeholder="e.g. Saturday funeral coverage"><label>Editing style</label><select id="preset"><option value="premium">Premium Natural</option><option value="bright">Bright Indoor</option><option value="shade">Outdoor Shade</option><option value="neutral">Neutral</option><option value="auto">Auto · analyse each photo</option></select><label>Editing mode</label><select id="mode"><option value="auto">Auto-edit every photo (recommended)</option><option value="manual">Manual preset + sliders</option></select><label>Choose photos</label><input id="files" type="file" accept="image/*" multiple><div class="actions"><button id="process" class="primary" disabled>Auto-edit selected photos</button></div><div class="note">Online browser editor · Pull photos from your device, process in-browser, push edited JPGs to Downloads. No Python, installations or server uploads.</div></section><section><h3>Fine-tune selected photo</h3><p class="muted">Adjustments are applied on top of automatic corrections. Drag any slider to update the preview.</p><div id="sliders"></div><div class="actions"><button id="reset">Reset</button><button id="save" class="primary" disabled>Export current JPG</button><button id="all" disabled>Export all JPGs</button></div><p class="muted" id="status" aria-live="polite"></p></section></div><div><section><h3>Before / After</h3><div class="compare"><figure><figcaption>Original</figcaption><div id="originalEmpty" class="empty">Choose a photo</div><img id="original" class="photo" hidden></figure><figure><figcaption>Edited preview</figcaption><div id="editedEmpty" class="empty">Choose a photo</div><canvas id="canvas" class="photo" hidden></canvas></figure></div><div id="thumbs" class="thumbs"></div></section><section><h3>Processing status</h3><div id="progress" class="muted">Choose up to five photos to start. Larger batches are also supported.</div><p>v2.0 browser pipeline: scene analysis, optional browser face detection, local exposure, black/white protection, skin-aware colour, bounded detail, and QA flags. Results depend on image and browser; RAW and true highlight reconstruction are not supported.</p></section></div></div></main><script>
 const presets={premium:{brightness:7,contrast:8,saturation:4,warmth:3,highlights:-8,shadows:10,subject:30},bright:{brightness:16,contrast:5,saturation:2,warmth:2,highlights:-14,shadows:18,subject:48},shade:{brightness:12,contrast:9,saturation:5,warmth:7,highlights:-5,shadows:16,subject:38},neutral:{brightness:0,contrast:0,saturation:0,warmth:0,highlights:0,shadows:0,subject:0}};
-const labels={brightness:'Exposure / brightness',contrast:'Contrast',saturation:'Saturation',warmth:'Warmth',highlights:'Highlights',shadows:'Shadows',subject:'Subject lift (dark people)'};let settings={...presets.premium},photos=[],selected=0,renderToken=0;let autoCorrections=[];
+const labels={brightness:'Exposure / brightness',contrast:'Contrast',saturation:'Saturation',warmth:'Warmth',highlights:'Highlights',shadows:'Shadows',subject:'Subject lift (dark people)'};let settings={...presets.premium},photos=[],selected=0,renderToken=0;let autoCorrections=[],sceneData=[];
 const $=id=>document.getElementById(id), sliders=$('sliders');
 for(const key of Object.keys(labels)){const row=document.createElement('div');row.innerHTML='<label>'+labels[key]+'</label><div class="slider"><input type="range" min="-100" max="100" step="1" data-key="'+key+'"><output>0</output></div>';const input=row.querySelector('input');input.addEventListener('input',()=>{settings[key]=Number(input.value);row.querySelector('output').textContent=input.value;render()});sliders.append(row)}
 function sync(){sliders.querySelectorAll('input').forEach(i=>{i.value=settings[i.dataset.key];i.nextElementSibling.textContent=i.value})}sync();
 $('preset').onchange=()=>{settings={...(presets[$('preset').value]||presets.neutral)};sync();render()};$('reset').onclick=()=>{settings={...presets[$('preset').value]};sync();render()};
-$('files').onchange=async e=>{photos.forEach(p=>URL.revokeObjectURL(p.url));photos=Array.from(e.target.files).filter(f=>f.type.startsWith('image/')).map(f=>({file:f,url:URL.createObjectURL(f)}));selected=0;autoCorrections=[];$('process').disabled=!photos.length;const thumbs=$('thumbs');thumbs.replaceChildren();photos.forEach((p,i)=>{let b=document.createElement('button');b.title=p.file.name;let img=document.createElement('img');img.src=p.url;b.append(img);b.onclick=()=>{selected=i;choose()};thumbs.append(b)});$('save').disabled=$('all').disabled=!photos.length;choose();if(photos.length&&$('mode').value==='auto')$('process').click()};
+$('files').onchange=async e=>{photos.forEach(p=>URL.revokeObjectURL(p.url));photos=Array.from(e.target.files).filter(f=>f.type.startsWith('image/')).map(f=>({file:f,url:URL.createObjectURL(f)}));selected=0;autoCorrections=[];sceneData=[];$('process').disabled=!photos.length;const thumbs=$('thumbs');thumbs.replaceChildren();photos.forEach((p,i)=>{let b=document.createElement('button');b.title=p.file.name;let img=document.createElement('img');img.src=p.url;b.append(img);b.onclick=()=>{selected=i;choose()};thumbs.append(b)});$('save').disabled=$('all').disabled=!photos.length;choose();if(photos.length&&$('mode').value==='auto')$('process').click()};
 function choose(){const p=photos[selected];$('thumbs').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',i===selected));$('original').hidden=$('canvas').hidden=!p;$('originalEmpty').hidden=$('editedEmpty').hidden=!!p;if(p){$('original').src=p.url;render()}}
 async function draw(photo,canvas){
  const img=new Image();img.src=photo.url;await img.decode();
- const scale=Math.min(1,3200/Math.max(img.naturalWidth,img.naturalHeight));
+ const scale=1; // Preserve original pixel dimensions in exported photos
  canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
  canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
  const ctx=canvas.getContext('2d',{willReadFrequently:true});
  ctx.drawImage(img,0,0,canvas.width,canvas.height);
  const image=ctx.getImageData(0,0,canvas.width,canvas.height),d=image.data,w=canvas.width,h=canvas.height;
  const correction=($('mode').value==='auto'?autoCorrections[photos.indexOf(photo)]:null)||{};
- const v=Object.fromEntries(Object.keys(settings).map(k=>[k,settings[k]+(correction[k]||0)]));
+ const v=Object.fromEntries(Object.keys(settings).map(k=>[k,settings[k]+(correction[k]||0)]));const analysis=sceneData[photos.indexOf(photo)]||{};const faceRegions=analysis.faces||[];
  // A low-resolution illumination map estimates where shadows actually occur.
  const gw=24,gh=24,sw=Math.min(480,w),sh=Math.max(1,Math.round(h*sw/w));
  const probe=document.createElement('canvas');probe.width=sw;probe.height=sh;
@@ -45,8 +45,8 @@ async function draw(photo,canvas){
  const backlit=Math.max(0,Math.min(1,((median-centerMean)-8)/55))*
                Math.max(0,Math.min(1,(bright/total-.025)/.15));
  const userExposure=v.brightness/450,shadowBoost=v.shadows/340,highlightAdjust=v.highlights/650;
- const subjectLift=Math.max(-.15,Math.min(.42,v.subject/250));
- const contrast=1+v.contrast/550,saturation=1+v.saturation/240,warmth=v.warmth*.12;
+ const subjectLift=Math.max(-.15,Math.min(.48,v.subject/240));
+ const contrast=1+v.contrast/850,saturation=1+v.saturation/350,warmth=v.warmth*.10;
  for(let y=0;y<h;y++){
   const gy=(y+.5)*gh/h-.5,y0=Math.max(0,Math.min(gh-1,Math.floor(gy))),y1=Math.min(gh-1,y0+1),fy=Math.max(0,Math.min(1,gy-y0));
   const cy=(y/h-.5)/.52;
@@ -59,8 +59,8 @@ async function draw(photo,canvas){
    const local=top*(1-fy)+bottom*fy;
    const shadowMask=Math.max(0,Math.min(1,(lum-.035)/.17))*Math.max(0,Math.min(1,(.75-lum)/.35));
    const localMask=Math.max(0,Math.min(1,(.60-local)/.48));
-   const cx=(x/w-.5)/.52,centerWeight=Math.exp(-1.7*(cx*cx+cy*cy));
-   const regionLift=(.075+.15*darkness+.18*backlit*centerWeight+shadowBoost*.22)*localMask*shadowMask;
+   const cx=(x/w-.5)/.52;let centerWeight=Math.exp(-1.7*(cx*cx+cy*cy));if(faceRegions.length){let faceWeight=0;for(const f of faceRegions){const dx=(x/w-f.x)/Math.max(.08,f.w*1.4),dy=(y/h-f.y)/Math.max(.09,f.h*2.4);faceWeight=Math.max(faceWeight,Math.exp(-1.35*(dx*dx+dy*dy)))}centerWeight=Math.max(centerWeight*.22,faceWeight)}
+   const sceneLift=analysis.scene==='backlit'?.14:analysis.scene==='low_light'?.11:.06;const regionLift=(sceneLift+.12*darkness+.18*backlit*centerWeight+shadowBoost*.20)*localMask*shadowMask;
    const midSubject=Math.max(0,Math.min(1,(lum-.035)/.16))*Math.max(0,Math.min(1,(.73-lum)/.30));
    const subjectCorrection=subjectLift*centerWeight*midSubject*(.45+.55*localMask);
    let target=lum+regionLift+subjectCorrection;
@@ -74,10 +74,10 @@ async function draw(photo,canvas){
    target=target*(1-.83*preserve)+lum*(.83*preserve);
    target+=highlightAdjust*preserve*.30;
    target=Math.max(0,Math.min(1,target));
-   const gain=Math.max(.75,Math.min(1.8,target/lum));
+   const gain=Math.max(.70,Math.min(2.0,target/lum));
    let rr=r*gain,gg=g*gain,bb=b*gain;
    // Reduce colour changes in plausible skin-colour pixels without claiming face detection.
-   const skin=r>65&&g>32&&b>18&&r>g*1.10&&g>b*.88&&r-b>17;
+   const skin=r>42&&g>24&&b>14&&r>g*1.06&&g>b*.82&&r-b>10;
    if(skin){rr=rr*.83+r*.17;gg=gg*.83+g*.17;bb=bb*.83+b*.17}
    rr+=warmth;bb-=warmth;
    const gray=.2126*rr+.7152*gg+.0722*bb;
@@ -87,12 +87,44 @@ async function draw(photo,canvas){
    d[i+2]=Math.max(0,Math.min(255,gray+(bb-gray)*sat));
   }
  }
- ctx.putImageData(image,0,0);
+ ctx.putImageData(image,0,0);if(analysis.scene==='low_light'){/* Avoid aggressive sharpening of high-ISO noise. */}else{const temp=document.createElement('canvas');temp.width=w;temp.height=h;const tx=temp.getContext('2d');tx.filter='blur(0.65px)';tx.drawImage(canvas,0,0);const blurred=tx.getImageData(0,0,w,h).data;for(let i=0;i<d.length;i+=4){for(let c=0;c<3;c++){const delta=d[i+c]-blurred[i+c];d[i+c]=Math.max(0,Math.min(255,d[i+c]+Math.max(-10,Math.min(10,delta))*.18))}}ctx.putImageData(image,0,0)}
 }
-async function analyse(photo){const img=new Image();img.src=photo.url;await img.decode();const c=document.createElement('canvas');const scale=Math.min(1,300/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);const d=x.getImageData(0,0,c.width,c.height).data;let sum=0,dark=0,bright=0,count=0;for(let i=0;i<d.length;i+=16){const l=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];sum+=l;dark+=l<75?1:0;bright+=l>220?1:0;count++}const mean=sum/count;return {brightness:Math.round(Math.max(-10,Math.min(16,(130-mean)*.22))),shadows:Math.round(Math.max(0,Math.min(28,dark/count*36))),highlights:-Math.round(Math.max(0,Math.min(28,bright/count*50))),contrast:mean<95?3:2,saturation:1,warmth:1,subject:Math.round(Math.max(18,Math.min(65,24+dark/count*38+bright/count*12)))}}
-$('mode').onchange=()=>{settings={...presets.neutral};sync();if($('mode').value==='auto'&&photos.length&&!autoCorrections.length){$('process').click()}else render()};
-$('process').onclick=async()=>{if(!photos.length)return;$('process').disabled=true;$('progress').textContent='Analysing photos…';autoCorrections=[];$('mode').value='auto';settings={...presets.neutral};sync();for(let i=0;i<photos.length;i++){try{autoCorrections[i]=await analyse(photos[i]);$('progress').textContent='Analysed '+(i+1)+' / '+photos.length+' photos';}catch(e){autoCorrections[i]={};$('progress').textContent='Unable to analyse '+photos[i].file.name}}$('process').disabled=false;$('progress').textContent='Auto-edit ready for '+photos.length+' photos. Select thumbnails to review, fine-tune, then export.';render()};
-async function render(){if(!photos.length)return;const token=++renderToken;const canvas=$('canvas'),offscreen=document.createElement('canvas'),photo=photos[selected];try{await draw(photo,offscreen);if(token!==renderToken)return;canvas.width=offscreen.width;canvas.height=offscreen.height;canvas.getContext('2d').drawImage(offscreen,0,0);$('status').textContent='Preview ready · '+photo.file.name}catch(err){$('status').textContent='Cannot decode this image in the browser: '+err.message}}
+async function analyse(photo){
+ const img=new Image();img.src=photo.url;await img.decode();
+ const c=document.createElement('canvas'),scale=Math.min(1,480/Math.max(img.naturalWidth,img.naturalHeight));
+ c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));
+ const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,c.width,c.height);
+ const d=x.getImageData(0,0,c.width,c.height).data;
+ let sum=0,dark=0,bright=0,center=0,centerCount=0,count=0;
+ for(let y=0;y<c.height;y+=2)for(let xx=0;xx<c.width;xx+=2){
+  const i=(y*c.width+xx)*4,l=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];
+  sum+=l;dark+=l<75?1:0;bright+=l>215?1:0;count++;
+  if(xx>c.width*.25&&xx<c.width*.75&&y>c.height*.15&&y<c.height*.85){center+=l;centerCount++}
+ }
+ const mean=sum/count,brightFraction=bright/count,darkFraction=dark/count,centerMean=center/Math.max(1,centerCount);
+ const scene=brightFraction>.055&&centerMean<mean-12?'backlit':mean<90?'low_light':brightFraction>.14?'high_contrast':'balanced';
+ let faces=[];
+ if('FaceDetector' in window){
+  try{const detector=new FaceDetector({fastMode:true,maxDetectedFaces:20});const detected=await detector.detect(c);
+  faces=detected.map(f=>({x:(f.boundingBox.x+f.boundingBox.width/2)/c.width,y:(f.boundingBox.y+f.boundingBox.height*1.2)/c.height,w:f.boundingBox.width/c.width,h:f.boundingBox.height/c.height}))}catch(e){console.info('Face detection unavailable:',e.message)}
+ }
+ sceneData[photos.indexOf(photo)]={scene,faces,mean,brightFraction,darkFraction};
+ return {brightness:Math.round(Math.max(-8,Math.min(12,(125-mean)*.14))),shadows:Math.round(Math.max(0,Math.min(30,darkFraction*32))),highlights:-Math.round(Math.max(0,Math.min(25,brightFraction*48))),contrast:scene==='low_light'?-2:1,saturation:0,warmth:0,subject:scene==='backlit'?45:scene==='low_light'?30:18}
+}
+function qaReport(photo,canvas){
+ const ctx=canvas.getContext('2d',{willReadFrequently:true}),w=canvas.width,h=canvas.height;
+ const c=document.createElement('canvas');c.width=Math.min(w,400);c.height=Math.max(1,Math.round(h*c.width/w));
+ const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(canvas,0,0,c.width,c.height);
+ const d=x.getImageData(0,0,c.width,c.height).data;let clipped=0,crushed=0;
+ for(let i=0;i<d.length;i+=4){const l=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];if(l>249)clipped++;if(l<7)crushed++}
+ const n=d.length/4,info=sceneData[photos.indexOf(photo)]||{};
+ const flags=[];if(clipped/n>.12)flags.push('bright highlights');if(crushed/n>.18)flags.push('deep shadows');
+ if(info.scene==='backlit'&&!info.faces?.length)flags.push('review subject exposure');
+ return {scene:info.scene||'unknown',faces:info.faces?.length||0,flags};
+}
+$('mode').onchange=()=>{settings={...presets.premium};sync();if($('mode').value==='auto'&&photos.length&&!autoCorrections.length){$('process').click()}else render()};
+$('process').onclick=async()=>{if(!photos.length)return;$('process').disabled=true;$('progress').textContent='Analysing photos…';autoCorrections=[];$('mode').value='auto';settings={...presets.premium};sync();for(let i=0;i<photos.length;i++){try{autoCorrections[i]=await analyse(photos[i]);$('progress').textContent='Analysed '+(i+1)+' / '+photos.length+' photos';}catch(e){autoCorrections[i]={};$('progress').textContent='Unable to analyse '+photos[i].file.name}}$('process').disabled=false;$('progress').textContent='Auto-edit ready for '+photos.length+' photos. Select thumbnails to review, fine-tune, then export.';render()};
+async function render(){if(!photos.length)return;const token=++renderToken;const canvas=$('canvas'),offscreen=document.createElement('canvas'),photo=photos[selected];try{await draw(photo,offscreen);if(token!==renderToken)return;canvas.width=offscreen.width;canvas.height=offscreen.height;canvas.getContext('2d').drawImage(offscreen,0,0);const qa=qaReport(photo,canvas);$('status').textContent='Preview ready · '+photo.file.name+' · '+qa.scene+' · '+(qa.faces?qa.faces+' face(s)':'subject heuristic')+' · '+(qa.flags.length?'Review: '+qa.flags.join(', '):'QA checks clear')}catch(err){$('status').textContent='Cannot decode this image in the browser: '+err.message}}
 function download(canvas,name){canvas.toBlob(blob=>{if(!blob)return;let url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name.replace(/\.[^.]+$/,'')+'-g-green.jpg';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000)},'image/jpeg',.92)}
 $('save').onclick=async()=>{if(!photos.length)return;const c=document.createElement('canvas');await draw(photos[selected],c);download(c,photos[selected].file.name)};
 $('all').onclick=async()=>{if(!photos.length)return;$('all').disabled=true;for(let i=0;i<photos.length;i++){const c=document.createElement('canvas');try{await draw(photos[i],c);download(c,photos[i].file.name);$('status').textContent='Exported '+(i+1)+' of '+photos.length}catch(e){$('status').textContent='Skipped '+photos[i].file.name}}$('all').disabled=false;$('status').textContent+=' · Browser may request permission for multiple downloads.'};
