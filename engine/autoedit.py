@@ -27,31 +27,59 @@ def analyze(bgr: np.ndarray) -> dict:
 
 
 def edit(bgr: np.ndarray) -> np.ndarray:
-    """Conservative adaptive luminance edit; preserve chroma and avoid clipping."""
-    stats = analyze(bgr)
+    """Conservative, non-AI luminance recovery with protected blacks/highlights.
+
+    Uses a smoothed local illumination estimate rather than global RGB offsets.
+    This is a baseline, NOT a validated face-aware photographic correction.
+    """
     lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
-    # Underexposed frames receive more shadow recovery, bright frames less.
-    shadow_strength = min(2.5, max(1.1, (125.0 - stats["mean_luminance"]) / 48.0))
-    clahe = cv2.createCLAHE(clipLimit=shadow_strength, tileGridSize=(8, 8))
-    local = clahe.apply(l)
-    # Blend edge-preserving local enhancement, avoiding harsh HDR artifacts.
-    blend = 0.28 if stats["mean_luminance"] >= 95 else 0.43
-    l_float = l.astype(np.float32)
-    local_float = local.astype(np.float32)
-    corrected = l_float * (1 - blend) + local_float * blend
-    # Shadow-selective lift; protect highlights and deep blacks.
-    shadow_mask = np.clip((175 - l_float) / 175, 0, 1) ** 1.5
-    lift = min(21.0, max(0.0, (118 - stats["mean_luminance"]) * 0.30))
-    corrected += shadow_mask * lift
-    corrected = np.clip(corrected, 0, 255).astype(np.uint8)
-    result = cv2.cvtColor(cv2.merge((corrected, a, b)), cv2.COLOR_LAB2BGR)
-    # Gentle detail sharpening on luminance, no aggressive edge halos.
-    ycrcb = cv2.cvtColor(result, cv2.COLOR_BGR2YCrCb)
-    y, cr, cb = cv2.split(ycrcb)
-    blur = cv2.GaussianBlur(y, (0, 0), 1.0)
-    y = cv2.addWeighted(y, 1.12, blur, -0.12, 0)
-    return cv2.cvtColor(cv2.merge((y, cr, cb)), cv2.COLOR_YCrCb2BGR)
+    luminance = l.astype(np.float32) / 255.0
+
+    # Large-scale illumination estimate allows different regions to be corrected.
+    # Use a downsampled estimate to bound RAM usage on an 8 GB machine.
+    height, width = l.shape
+    factor = min(1.0, 640.0 / max(height, width))
+    small = cv2.resize(luminance, (max(1, round(width * factor)),
+                                    max(1, round(height * factor))),
+                       interpolation=cv2.INTER_AREA)
+    illumination = cv2.GaussianBlur(small, (0, 0), 22)
+    illumination = cv2.resize(illumination, (width, height),
+                              interpolation=cv2.INTER_LINEAR)
+
+    # Exposure diagnosis uses robust percentiles, not just mean brightness.
+    p10, p50, p90 = np.percentile(small, [10, 50, 90])
+    darkness = np.clip((0.43 - p50) / 0.35, 0.0, 1.0)
+    # Local lift prioritises dark regions, while retaining naturally dark blacks.
+    local_dark = np.clip((0.53 - illumination) / 0.53, 0.0, 1.0)
+    shadow_band = np.clip((luminance - 0.045) / 0.19, 0.0, 1.0)
+    shadow_band *= np.clip((0.83 - luminance) / 0.36, 0.0, 1.0)
+    lift = (0.055 + 0.14 * darkness) * local_dark * shadow_band
+    corrected = luminance + lift
+
+    # Restrained midtone gamma, scaled down for already bright frames.
+    gamma = 1.0 - 0.16 * darkness
+    corrected = np.power(np.clip(corrected, 0.0, 1.0), gamma)
+
+    # Preserve black point and white point; never add a global grey offset.
+    black_anchor = np.clip((corrected - 0.025) / 0.975, 0.0, 1.0)
+    corrected = corrected * 0.85 + black_anchor * 0.15
+
+    # Highlight shoulder protects light clothing and bright skies.
+    shoulder = np.clip((corrected - 0.76) / 0.24, 0.0, 1.0)
+    corrected -= 0.025 * shoulder * shoulder * (3 - 2 * shoulder)
+    corrected = np.clip(corrected, 0.0, 1.0)
+
+    # Subtle luminance detail enhancement, attenuated in dark noisy regions.
+    # Avoid sharpening low-light noise and producing halos.
+    out_l = (corrected * 255.0).astype(np.float32)
+    blurred = cv2.GaussianBlur(out_l, (0, 0), 1.1)
+    detail = np.clip(out_l - blurred, -7.0, 7.0)
+    detail_weight = np.clip((corrected - 0.15) / 0.30, 0.0, 1.0)
+    out_l = np.clip(out_l + 0.28 * detail * detail_weight, 0, 255)
+    return cv2.cvtColor(
+        cv2.merge((out_l.astype(np.uint8), a, b)), cv2.COLOR_LAB2BGR
+    )
 
 
 def stable(path: Path, delay: float = 0.6) -> bool:
