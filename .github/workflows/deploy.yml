@@ -1,7 +1,14 @@
 name: Deploy G-Green AutoEdit to Afrihost
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
+
+concurrency:
+  group: g-green-autoedit-production
+  cancel-in-progress: false
 
 permissions:
   contents: read
