@@ -1,14 +1,15 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>G-Green AutoEdit</title><style>
 :root{font-family:Inter,Arial,sans-serif;color:#181818;background:#f5f5f6}*{box-sizing:border-box}body{margin:0}header{background:white;border-bottom:1px solid #ddd;padding:16px max(24px,calc((100vw - 1180px)/2));display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:22px}.mark{width:43px;height:43px;background:#111;color:white;border:5px solid #f58220;border-radius:50%;display:grid;place-items:center;font-weight:900}.orange{color:#f58220}main{max-width:1180px;margin:32px auto;padding:0 18px}h1{margin-bottom:5px}p,.muted{color:#6b6b72}section{background:white;border:1px solid #e4e4e8;border-radius:16px;padding:22px;margin-bottom:20px}.layout{display:grid;grid-template-columns:320px 1fr;gap:20px}label{display:block;font-size:13px;font-weight:700;margin:15px 0 7px}input[type=text],select,input[type=file]{width:100%;border:1px solid #ddd;border-radius:9px;padding:12px;background:white}button{border:0;border-radius:9px;padding:12px 16px;font-weight:700;cursor:pointer;background:#eee;color:#171717}button.primary{background:#f58220;color:white}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.photo{width:100%;max-height:440px;object-fit:contain;background:#f5f5f6;border-radius:10px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.compare figure{margin:0}.compare figcaption{font-size:13px;font-weight:700;margin-bottom:8px}.empty{display:grid;place-items:center;height:300px;background:#f5f5f6;color:#888;border:1px dashed #ccc;border-radius:10px}.thumbs{display:flex;gap:9px;overflow:auto;margin-top:16px}.thumbs button{padding:3px;border:2px solid transparent;background:white}.thumbs button.active{border-color:#f58220}.thumbs img{width:82px;height:66px;object-fit:cover;border-radius:5px}.slider{display:flex;align-items:center;gap:10px}.slider input{flex:1;accent-color:#f58220}.slider output{min-width:38px;text-align:right}.note{background:#fff3e8;border-radius:10px;padding:12px;font-size:13px;color:#704016;margin-top:14px}@media(max-width:800px){.layout,.compare{grid-template-columns:1fr}main{margin-top:18px}}
-</style></head><body><header><div class="brand"><div class="mark">G</div><span>G-Green <span class="orange">AutoEdit</span></span></div><small>Professional photo workspace · v1.2</small></header><main><h1>Photo editing workspace · AutoEdit v1.2</h1><p>Preview, tune and export photos in your browser. Your original files remain on your device.</p><div class="layout"><div><section><h3>Project setup</h3><label>Project name</label><input id="project" type="text" placeholder="e.g. Saturday funeral coverage"><label>Editing style</label><select id="preset"><option value="premium">Premium Natural</option><option value="bright">Bright Indoor</option><option value="shade">Outdoor Shade</option><option value="neutral">Neutral</option><option value="auto">Auto · analyse each photo</option></select><label>Editing mode</label><select id="mode"><option value="auto">Auto-edit every photo (recommended)</option><option value="manual">Manual preset + sliders</option></select><label>Choose photos</label><input id="files" type="file" accept="image/*" multiple><div class="actions"><button id="process" class="primary" disabled>Auto-edit selected photos</button></div><div class="note">Live browser test build v1.2: improved regional tone recovery; images are not uploaded to Afrihost. Supports images your browser can decode. No automatic Windows folder monitoring yet.</div></section><section><h3>Fine-tune selected photo</h3><p class="muted">Adjustments are applied on top of automatic corrections. Drag any slider to update the preview.</p><div id="sliders"></div><div class="actions"><button id="reset">Reset</button><button id="save" class="primary" disabled>Export current JPG</button><button id="all" disabled>Export all JPGs</button></div><p class="muted" id="status" aria-live="polite"></p></section></div><div><section><h3>Before / After</h3><div class="compare"><figure><figcaption>Original</figcaption><div id="originalEmpty" class="empty">Choose a photo</div><img id="original" class="photo" hidden></figure><figure><figcaption>Edited preview</figcaption><div id="editedEmpty" class="empty">Choose a photo</div><canvas id="canvas" class="photo" hidden></canvas></figure></div><div id="thumbs" class="thumbs"></div></section><section><h3>Processing status</h3><div id="progress" class="muted">Choose up to five photos to start. Larger batches are also supported.</div><p>Experimental regional shadow recovery and black-point protection are available for browser-supported images. RAW conversion, selective subject masking, watch folders and background processing are not implemented yet.</p></section></div></div></main><script>
+</style></head><body><header><div class="brand"><div class="mark">G</div><span>G-Green <span class="orange">AutoEdit</span></span></div><small>Professional photo workspace · v1.2</small></header><main><h1>Photo editing workspace · AutoEdit v1.2</h1><p>Preview, tune and export photos in your browser. Your original files remain on your device.</p><div class="layout"><div><section><h3>Project setup</h3><label>Project name</label><input id="project" type="text" placeholder="e.g. Saturday funeral coverage"><label>Editing style</label><select id="preset"><option value="premium">Premium Natural</option><option value="bright">Bright Indoor</option><option value="shade">Outdoor Shade</option><option value="neutral">Neutral</option><option value="auto">Auto · analyse each photo</option></select><label>Editing mode</label><select id="mode"><option value="auto">Auto-edit every photo (recommended)</option><option value="manual">Manual preset + sliders</option></select><label>Choose photos</label><input id="files" type="file" accept="image/*" multiple><div class="actions"><button id="pullFolder">Pull folder</button><button id="pushFolder">Choose Push folder</button><button id="process" class="primary" disabled>Auto-edit selected photos</button></div><div class="actions"><button id="batch" class="primary" disabled>Start automated batch</button><button id="cancelBatch" disabled>Stop after current photo</button></div><p class="muted" id="folderStatus">Pull: files selected manually · Push: browser downloads</p><label><input id="notifyEmail" type="checkbox" checked> Show start and finish notifications</label><div class="note">Email recipient: hello@g-green.co.za. Automatic email delivery requires a secure server-side notification endpoint; until configured, notifications appear in the browser and the completed batch report can be emailed manually.</div><div class="actions"><button id="emailReport" disabled>Email batch report</button></div><div class="note">Live browser test build v1.2: improved regional tone recovery; images are not uploaded to Afrihost. Supports images your browser can decode. No automatic Windows folder monitoring yet.</div></section><section><h3>Fine-tune selected photo</h3><p class="muted">Adjustments are applied on top of automatic corrections. Drag any slider to update the preview.</p><div id="sliders"></div><div class="actions"><button id="reset">Reset</button><button id="save" class="primary" disabled>Export current JPG</button><button id="all" disabled>Export all JPGs</button></div><p class="muted" id="status" aria-live="polite"></p></section></div><div><section><h3>Before / After</h3><div class="compare"><figure><figcaption>Original</figcaption><div id="originalEmpty" class="empty">Choose a photo</div><img id="original" class="photo" hidden></figure><figure><figcaption>Edited preview</figcaption><div id="editedEmpty" class="empty">Choose a photo</div><canvas id="canvas" class="photo" hidden></canvas></figure></div><div id="thumbs" class="thumbs"></div></section><section><h3>Processing status</h3><div id="progress" class="muted">Choose up to five photos to start. Larger batches are also supported.</div><p>Experimental regional shadow recovery and black-point protection are available for browser-supported images. RAW conversion, selective subject masking, watch folders and background processing are not implemented yet.</p></section></div></div></main><script>
 const presets={premium:{brightness:7,contrast:8,saturation:4,warmth:3,highlights:-8,shadows:10,subject:30},bright:{brightness:16,contrast:5,saturation:2,warmth:2,highlights:-14,shadows:18,subject:48},shade:{brightness:12,contrast:9,saturation:5,warmth:7,highlights:-5,shadows:16,subject:38},neutral:{brightness:0,contrast:0,saturation:0,warmth:0,highlights:0,shadows:0,subject:0}};
-const labels={brightness:'Exposure / brightness',contrast:'Contrast',saturation:'Saturation',warmth:'Warmth',highlights:'Highlights',shadows:'Shadows',subject:'Subject lift (dark people)'};let settings={...presets.premium},photos=[],selected=0,renderToken=0;let autoCorrections=[];
+const labels={brightness:'Exposure / brightness',contrast:'Contrast',saturation:'Saturation',warmth:'Warmth',highlights:'Highlights',shadows:'Shadows',subject:'Subject lift (dark people)'};let settings={...presets.premium},photos=[],selected=0,renderToken=0;let autoCorrections=[];let pushHandle=null,pullHandle=null,batchRunning=false,cancelRequested=false,lastReport=null;
 const $=id=>document.getElementById(id), sliders=$('sliders');
 for(const key of Object.keys(labels)){const row=document.createElement('div');row.innerHTML='<label>'+labels[key]+'</label><div class="slider"><input type="range" min="-100" max="100" step="1" data-key="'+key+'"><output>0</output></div>';const input=row.querySelector('input');input.addEventListener('input',()=>{settings[key]=Number(input.value);row.querySelector('output').textContent=input.value;render()});sliders.append(row)}
 function sync(){sliders.querySelectorAll('input').forEach(i=>{i.value=settings[i.dataset.key];i.nextElementSibling.textContent=i.value})}sync();
 $('preset').onchange=()=>{settings={...(presets[$('preset').value]||presets.neutral)};sync();render()};$('reset').onclick=()=>{settings={...presets[$('preset').value]};sync();render()};
-$('files').onchange=async e=>{photos.forEach(p=>URL.revokeObjectURL(p.url));photos=Array.from(e.target.files).filter(f=>f.type.startsWith('image/')).map(f=>({file:f,url:URL.createObjectURL(f)}));selected=0;autoCorrections=[];$('process').disabled=!photos.length;const thumbs=$('thumbs');thumbs.replaceChildren();photos.forEach((p,i)=>{let b=document.createElement('button');b.title=p.file.name;let img=document.createElement('img');img.src=p.url;b.append(img);b.onclick=()=>{selected=i;choose()};thumbs.append(b)});$('save').disabled=$('all').disabled=!photos.length;choose();if(photos.length&&$('mode').value==='auto')$('process').click()};
+async function loadFiles(files){photos.forEach(p=>URL.revokeObjectURL(p.url));photos=Array.from(files).filter(f=>f.type.startsWith('image/')).map(f=>({file:f,url:URL.createObjectURL(f)}));selected=0;autoCorrections=[];$('process').disabled=!photos.length;const thumbs=$('thumbs');thumbs.replaceChildren();photos.forEach((p,i)=>{let b=document.createElement('button');b.title=p.file.name;let img=document.createElement('img');img.src=p.url;b.append(img);b.onclick=()=>{selected=i;choose()};thumbs.append(b)});$('save').disabled=$('all').disabled=!photos.length;choose();$('batch').disabled=!photos.length;if(photos.length&&$('mode').value==='auto')await $('process').click()}
+$('files').onchange=async e=>loadFiles(e.target.files);
 function choose(){const p=photos[selected];$('thumbs').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',i===selected));$('original').hidden=$('canvas').hidden=!p;$('originalEmpty').hidden=$('editedEmpty').hidden=!!p;if(p){$('original').src=p.url;render()}}
 async function draw(photo,canvas){
  const img=new Image();img.src=photo.url;await img.decode();
@@ -96,4 +97,71 @@ async function render(){if(!photos.length)return;const token=++renderToken;const
 function download(canvas,name){canvas.toBlob(blob=>{if(!blob)return;let url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name.replace(/\.[^.]+$/,'')+'-g-green.jpg';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000)},'image/jpeg',.92)}
 $('save').onclick=async()=>{if(!photos.length)return;const c=document.createElement('canvas');await draw(photos[selected],c);download(c,photos[selected].file.name)};
 $('all').onclick=async()=>{if(!photos.length)return;$('all').disabled=true;for(let i=0;i<photos.length;i++){const c=document.createElement('canvas');try{await draw(photos[i],c);download(c,photos[i].file.name);$('status').textContent='Exported '+(i+1)+' of '+photos.length}catch(e){$('status').textContent='Skipped '+photos[i].file.name}}$('all').disabled=false;$('status').textContent+=' · Browser may request permission for multiple downloads.'};
+
+const supportedExt=/\.(jpe?g|png|webp|bmp|gif)$/i;
+function notify(message){
+ $('progress').textContent=message;
+ if(!$('notifyEmail').checked)return;
+ if('Notification' in window&&Notification.permission==='granted'){try{new Notification('G-Green AutoEdit',{body:message})}catch(e){}}
+}
+$('pullFolder').onclick=async()=>{
+ if(!('showDirectoryPicker' in window)){alert('Folder access is unavailable in this browser. Use Choose photos instead.');return}
+ try{pullHandle=await window.showDirectoryPicker({mode:'read'});const files=[];
+  for await(const [name,handle] of pullHandle.entries())if(handle.kind==='file'&&supportedExt.test(name))files.push(await handle.getFile());
+  $('folderStatus').textContent='Pull: '+pullHandle.name+' ('+files.length+' photos) · Push: '+(pushHandle?.name||'browser downloads');
+  await loadFiles(files);
+ }catch(e){if(e.name!=='AbortError')alert('Pull folder unavailable: '+e.message)}
+};
+$('pushFolder').onclick=async()=>{
+ if(!('showDirectoryPicker' in window)){alert('Folder writing is unavailable in this browser. Downloads will be used.');return}
+ try{pushHandle=await window.showDirectoryPicker({mode:'readwrite'});
+  $('folderStatus').textContent='Pull: '+(pullHandle?.name||'selected photos')+' · Push: '+pushHandle.name;
+ }catch(e){if(e.name!=='AbortError')alert('Push folder unavailable: '+e.message)}
+};
+async function saveBatchPhoto(canvas,name){
+ const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('JPEG encoding failed')),'image/jpeg',.92));
+ const filename=name.replace(/\.[^.]+$/,'')+'-g-green.jpg';
+ if(pushHandle){
+  const handle=await pushHandle.getFileHandle(filename,{create:true});
+  const stream=await handle.createWritable();try{await stream.write(blob);await stream.close()}catch(e){await stream.abort();throw e}
+ }else{
+  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+ }
+ return {filename,bytes:blob.size};
+}
+$('batch').onclick=async()=>{
+ if(batchRunning||!photos.length)return;
+ batchRunning=true;cancelRequested=false;$('batch').disabled=true;$('cancelBatch').disabled=false;$('process').disabled=true;
+ const started=new Date(),report={project:$('project').value||'Untitled project',started:started.toISOString(),total:photos.length,success:[],failed:[],cancelled:false,engine:'v1.2 (unchanged)'};
+ if('Notification' in window&&Notification.permission==='default'&&$('notifyEmail').checked){try{await Notification.requestPermission()}catch(e){}}
+ notify('Started: '+report.project+' · '+photos.length+' photographs');
+ try{
+  if($('mode').value==='auto'&&autoCorrections.length!==photos.length){
+   autoCorrections=[];for(let i=0;i<photos.length;i++){if(cancelRequested)break;try{autoCorrections[i]=await analyse(photos[i])}catch(e){autoCorrections[i]={}}}
+  }
+  for(let i=0;i<photos.length;i++){
+   if(cancelRequested){report.cancelled=true;break}
+   const p=photos[i],canvas=document.createElement('canvas');
+   try{await draw(p,canvas);const out=await saveBatchPhoto(canvas,p.file.name);
+    report.success.push({source:p.file.name,...out,width:canvas.width,height:canvas.height});
+   }catch(e){report.failed.push({source:p.file.name,error:String(e.message||e)})}
+   notify('Processing '+(i+1)+'/'+photos.length+' · '+report.success.length+' successful · '+report.failed.length+' failed');
+   await new Promise(resolve=>setTimeout(resolve,0));
+  }
+ }finally{
+  report.finished=new Date().toISOString();lastReport=report;batchRunning=false;
+  $('batch').disabled=!photos.length;$('cancelBatch').disabled=true;$('process').disabled=!photos.length;$('emailReport').disabled=false;
+  const summary='Finished: '+report.success.length+'/'+report.total+' exported, '+report.failed.length+' failed'+(report.cancelled?' (stopped)':'');
+  notify(summary);
+  const text=JSON.stringify(report,null,2),blob=new Blob([text],{type:'application/json'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='g-green-batch-report-'+Date.now()+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+ }
+};
+$('cancelBatch').onclick=()=>{cancelRequested=true;$('cancelBatch').disabled=true};
+$('emailReport').onclick=()=>{
+ if(!lastReport)return;
+ const subject='G-Green AutoEdit batch report — '+lastReport.project;
+ const body='Project: '+lastReport.project+'\nStarted: '+lastReport.started+'\nFinished: '+lastReport.finished+'\nProcessed: '+lastReport.success.length+'/'+lastReport.total+'\nFailed: '+lastReport.failed.length+'\n\n'+lastReport.failed.map(f=>f.source+': '+f.error).join('\n');
+ window.location.href='mailto:hello@g-green.co.za?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+};
 </script></body></html>
