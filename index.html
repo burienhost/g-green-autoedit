@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>G-Green AutoEdit</title><style>
 :root{font-family:Inter,Arial,sans-serif;color:#181818;background:#f5f5f6}*{box-sizing:border-box}body{margin:0}header{background:white;border-bottom:1px solid #ddd;padding:16px max(24px,calc((100vw - 1180px)/2));display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:22px}.mark{width:43px;height:43px;background:#111;color:white;border:5px solid #f58220;border-radius:50%;display:grid;place-items:center;font-weight:900}.orange{color:#f58220}main{max-width:1180px;margin:32px auto;padding:0 18px}h1{margin-bottom:5px}p,.muted{color:#6b6b72}section{background:white;border:1px solid #e4e4e8;border-radius:16px;padding:22px;margin-bottom:20px}.layout{display:grid;grid-template-columns:320px 1fr;gap:20px}label{display:block;font-size:13px;font-weight:700;margin:15px 0 7px}input[type=text],select,input[type=file]{width:100%;border:1px solid #ddd;border-radius:9px;padding:12px;background:white}button{border:0;border-radius:9px;padding:12px 16px;font-weight:700;cursor:pointer;background:#eee;color:#171717}button.primary{background:#f58220;color:white}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.photo{width:100%;max-height:440px;object-fit:contain;background:#f5f5f6;border-radius:10px}.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px}.compare figure{margin:0}.compare figcaption{font-size:13px;font-weight:700;margin-bottom:8px}.empty{display:grid;place-items:center;height:300px;background:#f5f5f6;color:#888;border:1px dashed #ccc;border-radius:10px}.thumbs{display:flex;gap:9px;overflow:auto;margin-top:16px}.thumbs button{padding:3px;border:2px solid transparent;background:white}.thumbs button.active{border-color:#f58220}.thumbs img{width:82px;height:66px;object-fit:cover;border-radius:5px}.slider{display:flex;align-items:center;gap:10px}.slider input{flex:1;accent-color:#f58220}.slider output{min-width:38px;text-align:right}.note{background:#fff3e8;border-radius:10px;padding:12px;font-size:13px;color:#704016;margin-top:14px}@media(max-width:800px){.layout,.compare{grid-template-columns:1fr}main{margin-top:18px}}
-</style></head><body><header><div class="brand"><div class="mark">G</div><span>G-Green <span class="orange">AutoEdit</span></span></div><small>Professional photo workspace · v1.0</small></header><main><h1>Photo editing workspace · AutoEdit v1.0</h1><p>Preview, tune and export photos in your browser. Your original files remain on your device.</p><div class="layout"><div><section><h3>Project setup</h3><label>Project name</label><input id="project" type="text" placeholder="e.g. Saturday funeral coverage"><label>Editing style</label><select id="preset"><option value="premium">Premium Natural</option><option value="bright">Bright Indoor</option><option value="shade">Outdoor Shade</option><option value="neutral">Neutral</option><option value="auto">Auto · analyse each photo</option></select><label>Editing mode</label><select id="mode"><option value="auto">Auto-edit every photo (recommended)</option><option value="manual">Manual preset + sliders</option></select><label>Choose photos</label><input id="files" type="file" accept="image/*" multiple><div class="actions"><button id="process" class="primary" disabled>Auto-edit selected photos</button></div><div class="note">Live browser test build v1.0: improved regional tone recovery; images are not uploaded to Afrihost. Supports images your browser can decode. No automatic Windows folder monitoring yet.</div></section><section><h3>Fine-tune selected photo</h3><p class="muted">Adjustments are applied on top of automatic corrections. Drag any slider to update the preview.</p><div id="sliders"></div><div class="actions"><button id="reset">Reset</button><button id="save" class="primary" disabled>Export current JPG</button><button id="all" disabled>Export all JPGs</button></div><p class="muted" id="status" aria-live="polite"></p></section></div><div><section><h3>Before / After</h3><div class="compare"><figure><figcaption>Original</figcaption><div id="originalEmpty" class="empty">Choose a photo</div><img id="original" class="photo" hidden></figure><figure><figcaption>Edited preview</figcaption><div id="editedEmpty" class="empty">Choose a photo</div><canvas id="canvas" class="photo" hidden></canvas></figure></div><div id="thumbs" class="thumbs"></div></section><section><h3>Processing status</h3><div id="progress" class="muted">Choose up to five photos to start. Larger batches are also supported.</div><p>Experimental regional shadow recovery and black-point protection are available for browser-supported images. RAW conversion, selective subject masking, watch folders and background processing are not implemented yet.</p></section></div></div></main><script>
+</style></head><body><header><div class="brand"><div class="mark">G</div><span>G-Green <span class="orange">AutoEdit</span></span></div><small>Professional photo workspace · v1.1</small></header><main><h1>Photo editing workspace · AutoEdit v1.1</h1><p>Preview, tune and export photos in your browser. Your original files remain on your device.</p><div class="layout"><div><section><h3>Project setup</h3><label>Project name</label><input id="project" type="text" placeholder="e.g. Saturday funeral coverage"><label>Editing style</label><select id="preset"><option value="premium">Premium Natural</option><option value="bright">Bright Indoor</option><option value="shade">Outdoor Shade</option><option value="neutral">Neutral</option><option value="auto">Auto · analyse each photo</option></select><label>Editing mode</label><select id="mode"><option value="auto">Auto-edit every photo (recommended)</option><option value="manual">Manual preset + sliders</option></select><label>Choose photos</label><input id="files" type="file" accept="image/*" multiple><div class="actions"><button id="process" class="primary" disabled>Auto-edit selected photos</button></div><div class="note">Live browser test build v1.1: improved regional tone recovery; images are not uploaded to Afrihost. Supports images your browser can decode. No automatic Windows folder monitoring yet.</div></section><section><h3>Fine-tune selected photo</h3><p class="muted">Adjustments are applied on top of automatic corrections. Drag any slider to update the preview.</p><div id="sliders"></div><div class="actions"><button id="reset">Reset</button><button id="save" class="primary" disabled>Export current JPG</button><button id="all" disabled>Export all JPGs</button></div><p class="muted" id="status" aria-live="polite"></p></section></div><div><section><h3>Before / After</h3><div class="compare"><figure><figcaption>Original</figcaption><div id="originalEmpty" class="empty">Choose a photo</div><img id="original" class="photo" hidden></figure><figure><figcaption>Edited preview</figcaption><div id="editedEmpty" class="empty">Choose a photo</div><canvas id="canvas" class="photo" hidden></canvas></figure></div><div id="thumbs" class="thumbs"></div></section><section><h3>Processing status</h3><div id="progress" class="muted">Choose up to five photos to start. Larger batches are also supported.</div><p>Experimental regional shadow recovery and black-point protection are available for browser-supported images. RAW conversion, selective subject masking, watch folders and background processing are not implemented yet.</p></section></div></div></main><script>
 const presets={premium:{brightness:7,contrast:8,saturation:4,warmth:3,highlights:-8,shadows:10},bright:{brightness:16,contrast:5,saturation:2,warmth:2,highlights:-14,shadows:18},shade:{brightness:12,contrast:9,saturation:5,warmth:7,highlights:-5,shadows:16},neutral:{brightness:0,contrast:0,saturation:0,warmth:0,highlights:0,shadows:0}};
 const labels={brightness:'Exposure / brightness',contrast:'Contrast',saturation:'Saturation',warmth:'Warmth',highlights:'Highlights',shadows:'Shadows'};let settings={...presets.premium},photos=[],selected=0,renderToken=0;let autoCorrections=[];
 const $=id=>document.getElementById(id), sliders=$('sliders');
@@ -12,67 +12,81 @@ $('files').onchange=async e=>{photos.forEach(p=>URL.revokeObjectURL(p.url));phot
 function choose(){const p=photos[selected];$('thumbs').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('active',i===selected));$('original').hidden=$('canvas').hidden=!p;$('originalEmpty').hidden=$('editedEmpty').hidden=!!p;if(p){$('original').src=p.url;render()}}
 async function draw(photo,canvas){
  const img=new Image();img.src=photo.url;await img.decode();
- // Browser safety limit until local full-resolution worker is installed.
  const scale=Math.min(1,3200/Math.max(img.naturalWidth,img.naturalHeight));
- canvas.width=Math.round(img.naturalWidth*scale);canvas.height=Math.round(img.naturalHeight*scale);
- const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,canvas.width,canvas.height);
+ canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+ canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});
+ ctx.drawImage(img,0,0,canvas.width,canvas.height);
  const image=ctx.getImageData(0,0,canvas.width,canvas.height),d=image.data,w=canvas.width,h=canvas.height;
  const correction=($('mode').value==='auto'?autoCorrections[photos.indexOf(photo)]:null)||{};
  const v=Object.fromEntries(Object.keys(settings).map(k=>[k,settings[k]+(correction[k]||0)]));
- // Regional luminance estimates drive local shadow recovery without lifting all blacks.
- const gridW=12,gridH=12,sums=new Float64Array(gridW*gridH),counts=new Uint32Array(gridW*gridH);
- const hist=new Uint32Array(256);
- for(let y=0;y<h;y+=3)for(let x=0;x<w;x+=3){
-   const i=(y*w+x)*4,l=Math.max(0,Math.min(255,Math.round(.2126*d[i]+.7152*d[i+1]+.0722*d[i+2])));
-   const k=Math.min(gridH-1,Math.floor(y*gridH/h))*gridW+Math.min(gridW-1,Math.floor(x*gridW/w));
-   sums[k]+=l/255;counts[k]++;hist[l]++;
+ // A low-resolution illumination map estimates where shadows actually occur.
+ const gw=24,gh=24,sw=Math.min(480,w),sh=Math.max(1,Math.round(h*sw/w));
+ const probe=document.createElement('canvas');probe.width=sw;probe.height=sh;
+ const px=probe.getContext('2d',{willReadFrequently:true});px.drawImage(canvas,0,0,sw,sh);
+ const pd=px.getImageData(0,0,sw,sh).data;
+ const sums=new Float64Array(gw*gh),counts=new Uint32Array(gw*gh),hist=new Uint32Array(256);
+ let bright=0,dark=0,centerDark=0,centerCount=0;
+ for(let y=0;y<sh;y++)for(let x=0;x<sw;x++){
+  const i=(y*sw+x)*4,r=pd[i],g=pd[i+1],b=pd[i+2];
+  const lum=Math.max(0,Math.min(255,Math.round(.2126*r+.7152*g+.0722*b)));
+  const k=Math.min(gh-1,Math.floor(y*gh/sh))*gw+Math.min(gw-1,Math.floor(x*gw/sw));
+  sums[k]+=lum/255;counts[k]++;hist[lum]++;
+  if(lum>210)bright++;if(lum<90)dark++;
+  if(x>sw*.25&&x<sw*.75&&y>sh*.13&&y<sh*.87){centerDark+=lum;centerCount++}
  }
- const tiles=new Float32Array(gridW*gridH);
+ const tiles=new Float32Array(gw*gh);
  for(let k=0;k<tiles.length;k++)tiles[k]=counts[k]?sums[k]/counts[k]:.5;
- let total=0;for(let k=0;k<256;k++)total+=hist[k];
- let cumulative=0,median=128;
- for(let k=0;k<256;k++){cumulative+=hist[k];if(cumulative>=total*.5){median=k;break}}
- const darkness=Math.max(0,Math.min(1,(112-median)/90));
- const userExposure=v.brightness/300,shadowBoost=v.shadows/250,highlightAdjust=v.highlights/400;
- const contrast=1+v.contrast/440,saturation=1+v.saturation/220,warmth=v.warmth*.16;
- const gamma=1-.085*darkness;
+ let total=sw*sh,cum=0,median=128;
+ for(let k=0;k<256;k++){cum+=hist[k];if(cum>=total*.5){median=k;break}}
+ const centerMean=centerCount?centerDark/centerCount:median;
+ const darkness=Math.max(0,Math.min(1,(125-median)/100));
+ // Backlit subjects are often darker than the surrounding scene.
+ const backlit=Math.max(0,Math.min(1,((median-centerMean)-8)/55))*
+               Math.max(0,Math.min(1,(bright/total-.025)/.15));
+ const userExposure=v.brightness/450,shadowBoost=v.shadows/340,highlightAdjust=v.highlights/650;
+ const contrast=1+v.contrast/550,saturation=1+v.saturation/240,warmth=v.warmth*.12;
  for(let y=0;y<h;y++){
-   const gy=(y+.5)*gridH/h-.5,y0=Math.max(0,Math.min(gridH-1,Math.floor(gy))),y1=Math.min(gridH-1,y0+1),fy=Math.max(0,Math.min(1,gy-y0));
-   for(let x=0;x<w;x++){
-     const i=(y*w+x)*4,r=d[i],g=d[i+1],b=d[i+2];
-     const oldLum=Math.max(.0001,(.2126*r+.7152*g+.0722*b)/255);
-     const gx=(x+.5)*gridW/w-.5,x0=Math.max(0,Math.min(gridW-1,Math.floor(gx))),x1=Math.min(gridW-1,x0+1),fx=Math.max(0,Math.min(1,gx-x0));
-     const top=tiles[y0*gridW+x0]*(1-fx)+tiles[y0*gridW+x1]*fx;
-     const bot=tiles[y1*gridW+x0]*(1-fx)+tiles[y1*gridW+x1]*fx;
-     const illumination=top*(1-fy)+bot*fy;
-     const shadowBand=Math.max(0,Math.min(1,(oldLum-.045)/.20))*Math.max(0,Math.min(1,(.83-oldLum)/.38));
-     const localDark=Math.max(0,Math.min(1,(.53-illumination)/.53));
-     let target=oldLum+(.045+.105*darkness+shadowBoost*.16)*localDark*shadowBand;
-     target=Math.pow(Math.max(0,Math.min(1,target)),gamma);
-     const shoulder=Math.max(0,Math.min(1,(target-.76)/.24));
-     target-=.045*shoulder*shoulder*(3-2*shoulder);
-     target+=userExposure*Math.max(0,Math.min(1,(oldLum-.02)/.20))*(1-shoulder*.85);
-     target+=highlightAdjust*shoulder*.45;
-     target=(target-.45)*contrast+.45;
-     target=.90*target+.10*Math.max(0,(target-.025)/.975);
-     target=Math.max(0,Math.min(1,target));
-     // Chroma-preserving luminance correction with soft gain limits.
-     const highProtect=Math.max(0,Math.min(1,(oldLum-.68)/.24));
-     target=target*(1-highProtect*.65)+oldLum*highProtect*.65;
-     const gain=Math.max(.78,Math.min(1.75,target/oldLum));
-     let rr=r*gain+warmth,gg=g*gain,bb=b*gain-warmth;
-     const maxC=Math.max(r,g,b),minC=Math.min(r,g,b);
-     const skin=(r>65&&g>35&&b>20&&r>g*1.12&&g>b*.92&&maxC-minC>12);
-     if(skin){rr=rr*.78+r*.22;gg=gg*.78+g*.22;bb=bb*.78+b*.22;}
-     const gray=.2126*rr+.7152*gg+.0722*bb;
-     const effectiveSaturation=skin?1+(saturation-1)*.35:saturation;
-     rr=gray+(rr-gray)*effectiveSaturation;gg=gray+(gg-gray)*effectiveSaturation;bb=gray+(bb-gray)*effectiveSaturation;
-     d[i]=Math.max(0,Math.min(255,rr));d[i+1]=Math.max(0,Math.min(255,gg));d[i+2]=Math.max(0,Math.min(255,bb));
-   }
+  const gy=(y+.5)*gh/h-.5,y0=Math.max(0,Math.min(gh-1,Math.floor(gy))),y1=Math.min(gh-1,y0+1),fy=Math.max(0,Math.min(1,gy-y0));
+  const cy=(y/h-.5)/.52;
+  for(let x=0;x<w;x++){
+   const i=(y*w+x)*4,r=d[i],g=d[i+1],b=d[i+2];
+   const lum=Math.max(.0001,(.2126*r+.7152*g+.0722*b)/255);
+   const gx=(x+.5)*gw/w-.5,x0=Math.max(0,Math.min(gw-1,Math.floor(gx))),x1=Math.min(gw-1,x0+1),fx=Math.max(0,Math.min(1,gx-x0));
+   const top=tiles[y0*gw+x0]*(1-fx)+tiles[y0*gw+x1]*fx;
+   const bottom=tiles[y1*gw+x0]*(1-fx)+tiles[y1*gw+x1]*fx;
+   const local=top*(1-fy)+bottom*fy;
+   const shadowMask=Math.max(0,Math.min(1,(lum-.035)/.17))*Math.max(0,Math.min(1,(.75-lum)/.35));
+   const localMask=Math.max(0,Math.min(1,(.60-local)/.48));
+   const cx=(x/w-.5)/.52,centerWeight=Math.exp(-1.7*(cx*cx+cy*cy));
+   const regionLift=(.075+.15*darkness+.18*backlit*centerWeight+shadowBoost*.22)*localMask*shadowMask;
+   let target=lum+regionLift;
+   target+=userExposure*shadowMask*.65;
+   // Gentle midtone lift, minimal effect on deep blacks and bright highlights.
+   const midMask=Math.max(0,1-Math.abs(lum-.42)/.42);
+   target+=darkness*.028*midMask;
+   target=(target-.44)*contrast+.44;
+   const shoulder=Math.max(0,Math.min(1,(lum-.70)/.25));
+   const preserve=shoulder*shoulder*(3-2*shoulder);
+   target=target*(1-.83*preserve)+lum*(.83*preserve);
+   target+=highlightAdjust*preserve*.30;
+   target=Math.max(0,Math.min(1,target));
+   const gain=Math.max(.75,Math.min(1.8,target/lum));
+   let rr=r*gain,gg=g*gain,bb=b*gain;
+   // Reduce colour changes in plausible skin-colour pixels without claiming face detection.
+   const skin=r>65&&g>32&&b>18&&r>g*1.10&&g>b*.88&&r-b>17;
+   if(skin){rr=rr*.83+r*.17;gg=gg*.83+g*.17;bb=bb*.83+b*.17}
+   rr+=warmth;bb-=warmth;
+   const gray=.2126*rr+.7152*gg+.0722*bb;
+   const sat=skin?1+(saturation-1)*.3:saturation;
+   d[i]=Math.max(0,Math.min(255,gray+(rr-gray)*sat));
+   d[i+1]=Math.max(0,Math.min(255,gray+(gg-gray)*sat));
+   d[i+2]=Math.max(0,Math.min(255,gray+(bb-gray)*sat));
+  }
  }
  ctx.putImageData(image,0,0);
 }
-async function analyse(photo){const img=new Image();img.src=photo.url;await img.decode();const c=document.createElement('canvas');const scale=Math.min(1,300/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);const d=x.getImageData(0,0,c.width,c.height).data;let sum=0,dark=0,bright=0,count=0;for(let i=0;i<d.length;i+=16){const l=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];sum+=l;dark+=l<75?1:0;bright+=l>220?1:0;count++}const mean=sum/count;return {brightness:Math.round(Math.max(-18,Math.min(26,(142-mean)*.35))),shadows:Math.round(Math.max(0,Math.min(30,dark/count*45))),highlights:-Math.round(Math.max(0,Math.min(28,bright/count*50))),contrast:mean<95?8:5,saturation:3,warmth:2}}
+async function analyse(photo){const img=new Image();img.src=photo.url;await img.decode();const c=document.createElement('canvas');const scale=Math.min(1,300/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);const d=x.getImageData(0,0,c.width,c.height).data;let sum=0,dark=0,bright=0,count=0;for(let i=0;i<d.length;i+=16){const l=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];sum+=l;dark+=l<75?1:0;bright+=l>220?1:0;count++}const mean=sum/count;return {brightness:Math.round(Math.max(-10,Math.min(16,(130-mean)*.22))),shadows:Math.round(Math.max(0,Math.min(28,dark/count*36))),highlights:-Math.round(Math.max(0,Math.min(28,bright/count*50))),contrast:mean<95?3:2,saturation:1,warmth:1}}
 $('mode').onchange=()=>{settings={...presets.neutral};sync();if($('mode').value==='auto'&&photos.length&&!autoCorrections.length){$('process').click()}else render()};
 $('process').onclick=async()=>{if(!photos.length)return;$('process').disabled=true;$('progress').textContent='Analysing photos…';autoCorrections=[];$('mode').value='auto';settings={...presets.neutral};sync();for(let i=0;i<photos.length;i++){try{autoCorrections[i]=await analyse(photos[i]);$('progress').textContent='Analysed '+(i+1)+' / '+photos.length+' photos';}catch(e){autoCorrections[i]={};$('progress').textContent='Unable to analyse '+photos[i].file.name}}$('process').disabled=false;$('progress').textContent='Auto-edit ready for '+photos.length+' photos. Select thumbnails to review, fine-tune, then export.';render()};
 async function render(){if(!photos.length)return;const token=++renderToken;const canvas=$('canvas'),offscreen=document.createElement('canvas'),photo=photos[selected];try{await draw(photo,offscreen);if(token!==renderToken)return;canvas.width=offscreen.width;canvas.height=offscreen.height;canvas.getContext('2d').drawImage(offscreen,0,0);$('status').textContent='Preview ready · '+photo.file.name}catch(err){$('status').textContent='Cannot decode this image in the browser: '+err.message}}
