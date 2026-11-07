@@ -26,16 +26,10 @@ jobs:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_TARGET_DIR: ${{ vars.FTP_TARGET_DIR }}
         run: |
           test -n "$FTP_SERVER" || { echo "Missing FTP_SERVER secret"; exit 1; }
           test -n "$FTP_USERNAME" || { echo "Missing FTP_USERNAME secret"; exit 1; }
           test -n "$FTP_PASSWORD" || { echo "Missing FTP_PASSWORD secret"; exit 1; }
-          test -n "$FTP_TARGET_DIR" || { echo "Missing FTP_TARGET_DIR variable"; exit 1; }
-          case "$FTP_TARGET_DIR" in
-            */edit.g-green.co.za/|edit.g-green.co.za/) ;;
-            *) echo "FTP_TARGET_DIR must end in edit.g-green.co.za/"; exit 1 ;;
-          esac
 
       - name: Deploy application files only
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -46,12 +40,15 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./
-          server-dir: ${{ vars.FTP_TARGET_DIR }}
+          # FTP user is already jailed to /home/ggreebnx/edit.g-green.co.za/.
+          # Deploying into a named subdirectory creates an unwanted nested site.
+          server-dir: ./
           dangerous-clean-slate: false
           exclude: |
             **/.git*
             **/.git*/**
             **/node_modules/**
+            engine/**
             **/README*
             **/*.md
             **/*.yml
