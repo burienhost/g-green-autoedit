@@ -564,23 +564,19 @@ function cullCurrentState(){return cullRows.map((r,i)=>({...r,id:i,selected:!!r.
 // Review photos are not discarded; they simply remain outside the editing selection.
 function cullApplyRecommendedShortlist(){
  if(cullBusy||!cullRows.length)return;
- const undecided=cullRows.filter((r,i)=>!r.manualKeep&&!cullProtectedMoments.has(i));
- const toDeselect=undecided.filter(r=>r.status!=='keep'&&r.keep);
- const toSelect=undecided.filter(r=>r.status==='keep'&&!r.keep);
- if(!toDeselect.length&&!toSelect.length){alert('Your editing selection already matches the available recommendations.');return;}
- const message='Apply SNAPIC preliminary shortlist?\n\n'+toSelect.length+' recommended Keep photos will be selected.\n'+toDeselect.length+' Review/Exclude photos will be deselected from editing (NOT deleted).\n\nProtected moments and manual decisions stay unchanged. Undo restores the selection. Recommendations are unvalidated and require your review.';
- if(!confirm(message))return;
- const ids=new Set([...toSelect.map(r=>cullRows.indexOf(r)),...toDeselect.map(r=>cullRows.indexOf(r))]);
- const state=cullCurrentState(),changes=[];
- const next=state.map(row=>{
-  if(!ids.has(row.id))return row;
-  const selected=row.recommendation.status==='keep';
-  changes.push({id:row.id,before:{selected:row.selected,override:row.override},after:{selected,override:selected?'include':'exclude'}});
-  return {...row,selected,override:selected?'include':'exclude'};
- });
- if(!changes.length)return;
- cullUndoStack.push({transaction:changes});if(cullUndoStack.length>100)cullUndoStack.shift();
- cullApplyState(next);cullPage=0;cullDraw();
+ const changes=[];
+ for(let i=0;i<cullRows.length;i++){
+  const row=cullRows[i];
+  if(row.manualKeep||cullProtectedMoments.has(i))continue;
+  const selected=row.status==='keep';
+  if(row.keep!==selected)changes.push({id:i,beforeSelected:row.keep,beforeAuto:!!row.shortlistAuto,selected});
+ }
+ if(!changes.length){alert('Your editing selection already matches the available recommendations.');return;}
+ const included=changes.filter(x=>x.selected).length,removed=changes.length-included;
+ if(!confirm('Apply SNAPIC preliminary shortlist?\\n\\n'+included+' photos selected for editing.\\n'+removed+' Review/Exclude photos deselected (never deleted).\\n\\nProtected moments and manual choices remain unchanged. Undo is available. Recommendations require photographer verification.'))return;
+ for(const change of changes){const row=cullRows[change.id];row.keep=change.selected;row.shortlistAuto=true;}
+ cullUndoStack.push({shortlistChanges:changes});if(cullUndoStack.length>100)cullUndoStack.shift();
+ cullPage=0;cullDraw();
 }
 function cullShortlistControl(){
  if($('cullShortlist'))return;
@@ -611,13 +607,14 @@ function cullSummary(){const keep=cullRows.filter(r=>r.keep).length;const review
  const crops=cullRows.filter(r=>r.localEvidence?.faceCropDetail?.available).length;
  const capability=' · Local image analysis '+analyzed+'/'+cullRows.length+' · Face detection '+faces+'/'+cullRows.length+' · Face crop detail '+crops+'/'+cullRows.length;
  $('cullSummary').textContent=keep+' selected for editing · '+(cullRows.length-keep)+' not selected · '+review+' need review · '+exclude+' recommended exclude'+capability+'. Originals untouched.';$('cullApply').disabled=!keep||cullBusy;$('cullUndo').disabled=!cullUndoStack.length}
-function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;const oldManual=row.manualKeep;if(field==='keep')row.manualKeep=true;cullUndoStack.push({row,field,previous,oldManual});if(cullUndoStack.length>100)cullUndoStack.shift();row[field]=value;$('cullUndo').disabled=false;cullDraw()}
-$('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else if(Number.isInteger(last.protectedId)){if(last.previousProtected)cullProtectedMoments.add(last.protectedId);else cullProtectedMoments.delete(last.protectedId);
+function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;const oldManual=row.manualKeep,oldAuto=row.shortlistAuto;if(field==='keep'){row.manualKeep=true;row.shortlistAuto=false;}cullUndoStack.push({row,field,previous,oldManual,oldAuto});if(cullUndoStack.length>100)cullUndoStack.shift();row[field]=value;$('cullUndo').disabled=false;cullDraw()}
+$('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.shortlistChanges){for(const change of last.shortlistChanges){const row=cullRows[change.id];if(row){row.keep=change.beforeSelected;row.shortlistAuto=change.beforeAuto;}}}
+ else if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else if(Number.isInteger(last.protectedId)){if(last.previousProtected)cullProtectedMoments.add(last.protectedId);else cullProtectedMoments.delete(last.protectedId);
  const protectedRow=cullRows[last.protectedId];
  if(protectedRow&&Object.prototype.hasOwnProperty.call(last,'previousSelected')){protectedRow.keep=last.previousSelected;protectedRow.manualKeep=last.previousManual;}
  cullV3ApplyRecommendations();
  if(protectedRow&&Object.prototype.hasOwnProperty.call(last,'previousSelected')){protectedRow.keep=last.previousSelected;protectedRow.manualKeep=last.previousManual;}
- cullBurstControls()}else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
+ cullBurstControls()}else{last.row[last.field]=last.previous;if(last.field==='keep'){last.row.manualKeep=last.oldManual;last.row.shortlistAuto=last.oldAuto;}}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
 $('cullRatingFilter').onchange=()=>{cullPage=0;cullDraw()};
 function cullVisibleRows(){
  const filter=$('cullFilter').value;
@@ -800,7 +797,7 @@ function cullV3Recommend(rows,mode='balanced',target=0){
   else if(r.group){r.status='review';r.reason=r.bestInGroup?'Strongest measured candidate in '+r.group+' · verify subject and expression':r.group+' · compare before excluding';review++}
   else{r.status='keeper';r.reason='No obvious technical defect detected';keeper++}
   // Never silently exclude for a target count or resemblance. Preserve explicit choices.
-  if(!r.manualKeep)r.keep=true;
+  if(!r.manualKeep&&!r.shortlistAuto)r.keep=true;
  }
  const requested=target>0?' Target of '+target+' is advisory; no forced exclusions.':'';
  return {scenes:groups.length,keepers:rows.filter(r=>r.keep).length,duplicates:ranked.reduce((n,g)=>n+g.length,0),review,defects,desired:rows.length,message:keeper+' technically suitable · '+review+' need review · '+defects+' possible technical issues.'+requested};
