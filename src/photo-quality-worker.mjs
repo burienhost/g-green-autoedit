@@ -6,6 +6,7 @@ import {subjectRegions} from './subject-regions.mjs';
 import {faceCropDetail} from './face-crop-detail.mjs';
 import {spatialDetail} from './spatial-detail.mjs';
 import {attentionCandidates} from './attention-candidates.mjs';
+import {attentionCropDetail} from './attention-crop-detail.mjs';
 const MAX_SIDE=256;
 self.onmessage=async ({data})=>{
  if(!data||data.type!=='analyze-photo'||typeof data.jobId!=='string')return;
@@ -24,6 +25,8 @@ self.onmessage=async ({data})=>{
   evidence.regions=regionSignature(pixels,width,height);
   evidence.spatialDetail=spatialDetail(pixels,width,height);
   evidence.attention=attentionCandidates(evidence.regions,evidence.spatialDetail);
+  try{evidence.attentionCropDetail=attentionCropDetail(bitmap,evidence.attention);}
+  catch(e){evidence.attentionCropDetail={available:false,regions:[],reason:'Attention crop unavailable'};}
   // Optional subject analysis must never erase successfully measured image evidence.
   // Native face detection is not consistently implemented across browser workers.
   try{
