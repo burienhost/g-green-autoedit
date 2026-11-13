@@ -4,6 +4,7 @@ import {regionSignature} from './moment-signals.mjs';
 import {facePresence} from './face-presence.mjs';
 import {subjectRegions} from './subject-regions.mjs';
 import {faceCropDetail} from './face-crop-detail.mjs';
+import {spatialDetail} from './spatial-detail.mjs';
 const MAX_SIDE=256;
 self.onmessage=async ({data})=>{
  if(!data||data.type!=='analyze-photo'||typeof data.jobId!=='string')return;
@@ -20,6 +21,7 @@ self.onmessage=async ({data})=>{
   const evidence=measureRGBA(pixels,width,height);
   evidence.grid=perceptualGrid(pixels,width,height);
   evidence.regions=regionSignature(pixels,width,height);
+  evidence.spatialDetail=spatialDetail(pixels,width,height);
   // Optional subject analysis must never erase successfully measured image evidence.
   // Native face detection is not consistently implemented across browser workers.
   try{
