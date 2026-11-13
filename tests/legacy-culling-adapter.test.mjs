@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {hydrateLegacy,syncLegacy,legacyFilter,legacyBulk,legacyUndo,legacyRecalculate} from '../src/legacy-culling-adapter.mjs';
-test('103 review photos remain visible even when all 240 are selected',()=>{
+test('all 240 uncalibrated legacy photos remain review-safe while selected',()=>{
  const old=Array.from({length:240},(_,i)=>({keep:true,manualKeep:false,metrics:i<103?null:{sharp:20},defects:[]}));
  const rows=hydrateLegacy(old);
- assert.equal(legacyFilter(rows,'review').length,103);
+ assert.equal(legacyFilter(rows,'review').length,240);
  assert.equal(legacyFilter(rows,'selected').length,240);
 });
 test('bulk override and undo survive recalculation',()=>{
