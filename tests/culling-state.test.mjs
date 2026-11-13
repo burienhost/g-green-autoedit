@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {recommend,makeRow,setSelection,undo,redo,recalculate,filterRows,editorSelection} from '../src/culling-state.mjs';
+test('missing evidence remains review',()=>assert.equal(recommend().status,'review'));
+test('unique moment preserved for review even with severe defect',()=>assert.equal(recommend({analyzed:true,unique:true,severeDefect:true,defectConfidence:1}).status,'review'));
+test('high-confidence severe defect can be excluded',()=>assert.equal(recommend({analyzed:true,severeDefect:true,defectConfidence:.99}).status,'exclude'));
+test('modes have genuinely different thresholds',()=>{const e={analyzed:true,severeDefect:true,defectConfidence:.88};assert.equal(recommend(e,'aggressive').status,'exclude');assert.equal(recommend(e,'conservative').status,'review');});
+test('strong unique-free image is keep',()=>assert.equal(recommend({analyzed:true,quality:'strong'}).status,'keep'));
+test('weak burst evidence cannot exclude',()=>assert.equal(recommend({analyzed:true,burstInferior:true,burstConfidence:.6}).status,'review'));
+test('review filter is independent of selection',()=>{const rows=Array.from({length:240},(_,i)=>makeRow(i,i<103?{}:{analyzed:true,quality:'strong'}));assert.equal(filterRows(rows,'review').length,103);assert.equal(filterRows(rows,'selected').length,240);});
+test('bulk transaction undo restores both selection and override',()=>{const rows=[makeRow('a'),makeRow('b'),makeRow('c')];const changed=setSelection(rows,['a','b'],false);assert.equal(editorSelection(changed.rows).length,1);const restored=undo(changed.rows,changed.transaction);assert.deepEqual(restored,rows);assert.deepEqual(redo(restored,changed.transaction),changed.rows);});
+test('recalculation never overwrites photographer override',()=>{const a=setSelection([makeRow(1,{analyzed:true,severeDefect:true,defectConfidence:.9})],[1],false).rows;const b=recalculate(a,'conservative');assert.equal(b[0].selected,false);assert.equal(b[0].override,'exclude');});
+test('editor handoff includes selected IDs exactly once',()=>{const rows=[makeRow('a'),makeRow('b'),makeRow('c')];assert.deepEqual(editorSelection(setSelection(rows,['b'],false).rows),['a','c']);});
+test('filter unknown throws',()=>assert.throws(()=>filterRows([],'nope')));
