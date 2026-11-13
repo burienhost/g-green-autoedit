@@ -673,7 +673,7 @@ function cullCandidateRanking(a,b,index){
  cullRankingModule().then(({rankCandidatePair})=>{
   if(cullCandidateCursor!==index||$('cullComparison').hidden)return;
   const r=rankCandidatePair(a.localEvidence,b.localEvidence);
-  label.textContent=!r.ranked?'Technical ranking unavailable — compare manually.':r.preferred===null?'Technical signals inconclusive — compare expressions and moments manually.':'Technical preference: photo '+(r.preferred==='a'?'A':'B')+' ('+r.left.score+' vs '+r.right.score+'). Photographer must verify expressions and moments.';
+  label.textContent=!r.ranked?'Technical ranking unavailable — compare manually.':'Technical score A: '+r.left.score+'/100 · B: '+r.right.score+'/100 · '+(r.preferred===null?'No clear technical winner.': 'Technical preference: '+(r.preferred==='a'?'A':'B')+'.')+' Check expressions and unique moments before deciding.';
  }).catch(()=>{if(cullCandidateCursor===index)label.textContent='Ranking unavailable — compare manually.'});
 }
 function cullOpenCandidate(index){
