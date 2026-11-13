@@ -15,6 +15,12 @@ export function screenPhoto(e={}){
  if(e.detailEnergy<8)flags.push('Low measured detail: check focus and intentional blur');
  if(localizedDark)context.push('Mixed dark and lit regions; preserve creative low-key scenes');
  if(localizedBright)context.push('Mixed bright and shaded regions; preserve backlit scenes');
+ if(e.faceCropDetail?.available){
+  const crops=e.faceCropDetail.regions.filter(x=>x.assessable);
+  const lowTexture=crops.filter(x=>x.detailEnergy<12&&x.contrastStdDev<28);
+  if(lowTexture.length)flags.push(lowTexture.length+' higher-resolution face crop(s) show low detail and contrast; inspect at 100% before culling');
+  else context.push('Higher-resolution face crops measured; focus and expression still require photographer verification');
+ }
  if(e.subjects?.available){
   const subjects=e.subjects.subjects;
   const shadowed=subjects.filter(x=>x.meanLuma<55||x.shadowFraction>.3).length;
