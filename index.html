@@ -615,7 +615,9 @@ function cullDecision(row,field,value){const previous=row[field];if(previous===v
 $('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else if(Number.isInteger(last.protectedId)){if(last.previousProtected)cullProtectedMoments.add(last.protectedId);else cullProtectedMoments.delete(last.protectedId);
  const protectedRow=cullRows[last.protectedId];
  if(protectedRow&&Object.prototype.hasOwnProperty.call(last,'previousSelected')){protectedRow.keep=last.previousSelected;protectedRow.manualKeep=last.previousManual;}
- cullV3ApplyRecommendations();cullBurstControls()}else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
+ cullV3ApplyRecommendations();
+ if(protectedRow&&Object.prototype.hasOwnProperty.call(last,'previousSelected')){protectedRow.keep=last.previousSelected;protectedRow.manualKeep=last.previousManual;}
+ cullBurstControls()}else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
 $('cullRatingFilter').onchange=()=>{cullPage=0;cullDraw()};
 function cullVisibleRows(){
  const filter=$('cullFilter').value;
