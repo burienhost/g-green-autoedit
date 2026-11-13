@@ -8,6 +8,7 @@ export function recommend(evidence = {}, mode = 'balanced') {
  if(severeDefect&&defectConfidence>=limit)return {status:'exclude',reason:'High-confidence technical defect',confidence:defectConfidence};
  if(burstInferior&&burstConfidence>=limit)return {status:'exclude',reason:'Lower-ranked confirmed burst alternative',confidence:burstConfidence};
  if(quality==='strong'&&!severeDefect&&!burstInferior)return {status:'keep',reason:'Strong technical evidence',confidence:.8};
+ if(quality==='screened'&&!severeDefect&&!burstInferior)return {status:'keep',reason:'No obvious issue in preliminary technical screen; photographer verification advised',confidence:.35};
  return {status:'review',reason:'Insufficient evidence for a decisive recommendation',confidence:Math.max(defectConfidence,burstConfidence)};
 }
 export function makeRow(id,evidence={}){return {id,evidence,recommendation:recommend(evidence),selected:true,override:null};}
