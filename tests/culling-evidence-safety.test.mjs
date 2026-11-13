@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {evidenceFromLegacy,hydrateLegacy} from '../src/legacy-culling-adapter.mjs';
+test('uncalibrated legacy image measurements remain review, not strong keep',()=>{const row={keep:true,manualKeep:false,metrics:{sharp:99,brightness:130},defects:[]};const result=hydrateLegacy([row])[0];assert.equal(result.recommendation.status,'review');assert.equal(result.selected,true)});
+test('worker evidence does not imply validated quality',()=>{const row={keep:true,metrics:null,localEvidence:{analyzed:true,detailEnergy:9000}};assert.equal(evidenceFromLegacy(row).quality,'uncertain')});
+test('unreadable image stays in manual review',()=>{const result=hydrateLegacy([{keep:true,metrics:null,localEvidence:{analyzed:false}}])[0];assert.equal(result.recommendation.status,'review')});
+test('manual exclusion survives recommendation hydration',()=>{const result=hydrateLegacy([{keep:false,manualKeep:true,metrics:{sharp:99},defects:[]}])[0];assert.equal(result.selected,false);assert.equal(result.override,'exclude')});
