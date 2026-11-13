@@ -624,8 +624,9 @@ function cullChooseCompare(row){
 }
 function cullCompareClose(){ $('cullComparison').hidden=true;cullCompareSelection=[];cullDraw() }
 $('cullCompareClose').onclick=cullCompareClose;
-$('cullCompareKeepA').onclick=()=>{const [a,b]=cullCompareSelection;cullDecision(a,'keep',true);cullDecision(b,'keep',false);cullCompareClose()};
-$('cullCompareKeepB').onclick=()=>{const [a,b]=cullCompareSelection;cullDecision(a,'keep',false);cullDecision(b,'keep',true);cullCompareClose()};
+function cullCompareChoose(winner,other){const changes=[];for(const [row,keep] of [[winner,true],[other,false]]){if(row.keep===keep)continue;changes.push({row,field:'keep',previous:row.keep,previousManualKeep:row.manualKeep});row.keep=keep;row.manualKeep=true}if(changes.length)cullUndoStack.push(changes);$('cullUndo').disabled=!cullUndoStack.length;cullCompareClose()}
+$('cullCompareKeepA').onclick=()=>{const [a,b]=cullCompareSelection;cullCompareChoose(a,b)};
+$('cullCompareKeepB').onclick=()=>{const [a,b]=cullCompareSelection;cullCompareChoose(b,a)};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cullComparison').hidden)cullCompareClose()});
 
 
