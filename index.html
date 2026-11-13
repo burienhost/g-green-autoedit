@@ -575,14 +575,14 @@ async function cullRefreshPricing(){
  }catch(e){if(request===cullQuoteRequest)$('cullPricing').textContent='Could not load culling balance: '+e.message}
 }
 $('cullWalletRefresh').onclick=()=>cullRefreshPricing().catch(()=>{});
-function cullReset(){cullSimilarityCandidates=[];if($('cullCandidateOpen'))$('cullCandidateOpen').hidden=true;cullPage=0;$('cullV3Apply').disabled=true;$('cullV3Stats').textContent='Engine 3.0 · review recommendations before editing.';cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
+function cullReset(){cullBurstGroups=[];cullBurstCursor=0;cullBurstFocusIds=null;if($('cullBurstControls'))$('cullBurstControls').hidden=true;cullSimilarityCandidates=[];if($('cullCandidateOpen'))$('cullCandidateOpen').hidden=true;cullPage=0;$('cullV3Apply').disabled=true;$('cullV3Stats').textContent='Engine 3.0 · review recommendations before editing.';cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
 function cullSummary(){const keep=cullRows.filter(r=>r.keep).length;const review=cullRows.filter(r=>r.status==='review').length,exclude=cullRows.filter(r=>r.status==='exclude').length;$('cullSummary').textContent=keep+' selected for editing · '+(cullRows.length-keep)+' not selected · '+review+' need review · '+exclude+' recommended exclude. Originals untouched.';$('cullApply').disabled=!keep||cullBusy;$('cullUndo').disabled=!cullUndoStack.length}
 function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;const oldManual=row.manualKeep;if(field==='keep')row.manualKeep=true;cullUndoStack.push({row,field,previous,oldManual});if(cullUndoStack.length>100)cullUndoStack.shift();row[field]=value;$('cullUndo').disabled=false;cullDraw()}
 $('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
 $('cullRatingFilter').onchange=()=>{cullPage=0;cullDraw()};
 function cullVisibleRows(){
  const filter=$('cullFilter').value;
- return cullBridge().legacyFilter(cullCurrentState(),filter).map(r=>cullRows[r.id]).filter(r=>Number(r.rating||0)>=Number($('cullRatingFilter').value));
+ return cullBridge().legacyFilter(cullCurrentState(),filter).map(r=>cullRows[r.id]).filter(r=>(!cullBurstFocusIds||cullBurstFocusIds.has(cullRows.indexOf(r)))&&Number(r.rating||0)>=Number($('cullRatingFilter').value));
 }
 function cullDraw(){
  const host=$('cullReview');host.replaceChildren();
@@ -797,6 +797,8 @@ let cullQualityWorker=null,cullQualitySerial=0;
 let cullSimilarityCandidates=[];
 let cullBurstGroups=[];
 let cullBurstCursor=0;
+let cullBurstFocusIds=null;
+function cullBurstFocusClear(){cullBurstFocusIds=null;cullPage=0;cullBurstControls();cullDraw()}
 function cullBurstControls(){
  let bar=$('cullBurstControls');
  if(!bar){
@@ -813,14 +815,30 @@ function cullBurstControls(){
    $('cullComparison').hidden=false;cullCandidateCursor=-1;
    cullCandidateRanking(a,b,-1);cullDraw();
   };
+  const focus=document.createElement('button');focus.type='button';focus.id='cullBurstFocus';focus.textContent='Show burst photos';focus.onclick=()=>{
+   const g=cullBurstGroups[cullBurstCursor];if(!g)return;
+   cullBurstFocusIds=new Set(g.members);cullPage=0;cullBurstControls();cullDraw();
+  };
+  const clear=document.createElement('button');clear.type='button';clear.id='cullBurstClear';clear.textContent='Show all photos';clear.onclick=cullBurstFocusClear;
+  const include=document.createElement('button');include.type='button';include.textContent='Select entire burst';include.onclick=()=>{
+   const g=cullBurstGroups[cullBurstCursor];if(!g)return;
+   cullBulkSelection(g.members.map(i=>cullRows[i]).filter(Boolean),true);
+  };
+  const exclude=document.createElement('button');exclude.type='button';exclude.textContent='Deselect entire burst';exclude.onclick=()=>{
+   const g=cullBurstGroups[cullBurstCursor];if(!g)return;
+   if(!confirm('Deselect all '+g.members.length+' photographs in this possible burst? This is your manual decision; originals will not be deleted and Undo is available.'))return;
+   cullBulkSelection(g.members.map(i=>cullRows[i]).filter(Boolean),false);
+  };
   const label=document.createElement('span');label.id='cullBurstLabel';label.style.margin='0 8px';
-  bar.append(prev,label,next,open);$('cullV3Stats').insertAdjacentElement('afterend',bar);
+  bar.append(prev,label,next,open,focus,clear,include,exclude);$('cullV3Stats').insertAdjacentElement('afterend',bar);
  }
  bar.hidden=!cullBurstGroups.length;if(!cullBurstGroups.length)return;
  cullBurstCursor=Math.min(cullBurstCursor,cullBurstGroups.length-1);
  const g=cullBurstGroups[cullBurstCursor];
  $('cullBurstLabel').textContent='Possible burst '+(cullBurstCursor+1)+' of '+cullBurstGroups.length+' · '+g.members.length+' photos · '+(g.technicalLeader===null?'No clear technical leader':'Technical leader: '+cullRows[g.technicalLeader].photo.file.name)+' · Review moments manually';
  bar.children[0].disabled=cullBurstCursor===0;bar.children[2].disabled=cullBurstCursor===cullBurstGroups.length-1;
+ bar.children[5].disabled=!cullBurstFocusIds;
+ bar.children[4].textContent=cullBurstFocusIds?'Show this burst':'Show burst photos';
 }
 async function cullRefreshSimilarityCandidates(){
  try{
@@ -830,11 +848,11 @@ async function cullRefreshSimilarityCandidates(){
   cullSimilarityCandidates=result.pairs;
   const {buildBurstCandidates}=await import('./src/burst-candidates.mjs');
   const bursts=buildBurstCandidates(cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid,evidence:r.localEvidence})),{threshold:.035,window:12,maxGroups:300,maxMembers:60});
-  cullBurstGroups=bursts.groups;cullBurstCursor=0;cullBurstControls();
+  cullBurstGroups=bursts.groups;cullBurstCursor=0;cullBurstFocusIds=null;cullBurstControls();
   cullCandidateControls();
   const info=cullBurstGroups.length+' possible burst groups and '+result.pairs.length+' possible visual matches identified for manual comparison'+(result.truncated?' (limit reached)':'')+'. No photographs excluded.';
   $('cullV3Stats').textContent+=' '+info;
- }catch(e){console.warn('Visual candidate retrieval unavailable',e);cullSimilarityCandidates=[];cullBurstGroups=[];cullBurstControls();cullCandidateControls()}
+ }catch(e){console.warn('Visual candidate retrieval unavailable',e);cullSimilarityCandidates=[];cullBurstGroups=[];cullBurstFocusIds=null;cullBurstControls();cullCandidateControls()}
 }
 
 async function cullLocalQuality(photo){
