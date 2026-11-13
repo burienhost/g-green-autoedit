@@ -28,13 +28,13 @@ async function seed(page) {
     window.cullDraw();
   });
 }
-test('real interface renders 240 selections and 103 review recommendations', async ({ page }) => {
+test('real interface renders 240 selections and conservatively reviews all uncalibrated photos', async ({ page }) => {
   const errors = await loadApp(page);
   await seed(page);
   await expect(page.locator('#cullSummary')).toContainText('240 selected for editing');
-  await expect(page.locator('#cullSummary')).toContainText('103 need review');
+  await expect(page.locator('#cullSummary')).toContainText('240 need review');
   await page.locator('#cullFilter').selectOption('review');
-  await expect(page.locator('#cullRenderStatus')).toContainText('103 results');
+  await expect(page.locator('#cullRenderStatus')).toContainText('240 results');
   await expect(page.locator('#cullReview .cull-tile')).toHaveCount(48);
   await page.screenshot({ path: 'test-results/review-filter.png', fullPage: true });
   expect(errors).toEqual([]);
@@ -44,8 +44,8 @@ test('bulk exclusion is one undo transaction and preserves recommendations', asy
   await seed(page);
   await page.locator('#cullFilter').selectOption('review');
   await page.locator('#cullRejectVisible').click();
-  await expect(page.locator('#cullSummary')).toContainText('137 selected for editing');
-  await expect(page.locator('#cullSummary')).toContainText('103 need review');
+  await expect(page.locator('#cullSummary')).toContainText('0 selected for editing');
+  await expect(page.locator('#cullSummary')).toContainText('240 need review');
   await page.locator('#cullUndo').click();
   await expect(page.locator('#cullSummary')).toContainText('240 selected for editing');
   await page.screenshot({ path: 'test-results/bulk-undo.png', fullPage: true });
