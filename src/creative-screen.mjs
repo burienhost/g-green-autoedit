@@ -15,6 +15,13 @@ export function screenPhoto(e={}){
  if(e.detailEnergy<8)flags.push('Low measured detail: check focus and intentional blur');
  if(localizedDark)context.push('Mixed dark and lit regions; preserve creative low-key scenes');
  if(localizedBright)context.push('Mixed bright and shaded regions; preserve backlit scenes');
+ if(e.attention?.available){
+  const a=e.attention;
+  if(a.candidates.length){
+   const positions=a.candidates.map(c=>'('+Math.round(c.x*100)+'% across, '+Math.round(c.y*100)+'% down)').join(', ');
+   context.push('Visual-attention candidates at '+positions+'; these are not verified subjects');
+  }else context.push('No distinct visual-attention region found; subject location unknown');
+ }
  if(e.spatialDetail?.available){
   const d=e.spatialDetail;
   if(d.centerLowRelative)context.push('Central region has much less fine detail than another region; inspect focus placement if your subject is centered');
