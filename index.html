@@ -682,6 +682,7 @@ function cullOpenCandidate(index){
  const a=cullRows[pair.a],b=cullRows[pair.b];
  if(!a||!b)return;
  cullCandidateCursor=index;
+ if($('cullCompareProgress'))$('cullCompareProgress').textContent='Match '+(index+1)+' of '+cullSimilarityCandidates.length+' · Choose A, B or both; Undo is available';
  if($('cullCandidatePrev'))$('cullCandidatePrev').disabled=index===0;
  if($('cullCandidateNext'))$('cullCandidateNext').disabled=index>=cullSimilarityCandidates.length-1;
  cullCompareSelection=[a,b];
@@ -711,6 +712,7 @@ function cullChooseCompare(row){
   $('cullCompareNameA').textContent=a.photo.file.name+' · '+a.reason;
   $('cullCompareNameB').textContent=b.photo.file.name+' · '+b.reason;
   $('cullComparison').hidden=false;
+  if($('cullCompareProgress'))$('cullCompareProgress').textContent='Manual comparison · Choose A, B or both';
  }cullDraw();
 }
 function cullCompareClose(){ $('cullComparison').hidden=true;cullCompareSelection=[];cullCandidateCursor=-1;cullDraw() }
@@ -729,20 +731,45 @@ cullCandidatePrev.type='button';cullCandidatePrev.id='cullCandidatePrev';cullCan
 cullCandidatePrev.onclick=()=>{if(cullCandidateCursor>0)cullOpenCandidate(cullCandidateCursor-1)};
 $('cullComparison').append(cullCandidatePrev);
 
-// One comparison choice is one reversible selection transaction.
+// A photographer's comparison choice is one reversible transaction. Protected moments
+// are never deselected. Advance through candidate matches without rescanning or charging.
 function cullCompareChoose(winner){
  const [a,b]=cullCompareSelection;
  if(!a||!b||a===b)return;
- const state=cullCurrentState(),ids=[cullRows.indexOf(a),cullRows.indexOf(b)];
+ const ids=[cullRows.indexOf(a),cullRows.indexOf(b)];
  if(ids.some(id=>id<0))return;
- const first=cullBridge().legacyBulk(state,[ids[winner]],true);
- const second=cullBridge().legacyBulk(first.rows,[ids[1-winner]],false);
+ if(winner!==2&&cullProtectedMoments.has(ids[1-winner])){
+  alert('The other photograph is protected. Unprotect it first, or choose Keep both.');
+  return;
+ }
+ const state=cullCurrentState();
+ const keepIds=winner===2?ids:[ids[winner]];
+ const dropIds=winner===2?[]:[ids[1-winner]];
+ const first=cullBridge().legacyBulk(state,keepIds,true);
+ const second=dropIds.length?cullBridge().legacyBulk(first.rows,dropIds,false):{rows:first.rows,transaction:[]};
  const changes=[...first.transaction,...second.transaction].filter(change=>change.before.selected!==change.after.selected||change.before.override!==change.after.override);
- if(changes.length){cullUndoStack.push({transaction:changes});if(cullUndoStack.length>100)cullUndoStack.shift();cullApplyState(second.rows)}
- cullCompareClose();
+ if(changes.length){
+  cullUndoStack.push({transaction:changes});if(cullUndoStack.length>100)cullUndoStack.shift();
+  cullApplyState(second.rows);
+ }
+ const next=cullCandidateCursor>=0?cullCandidateCursor+1:-1;
+ if(next>=0&&next<cullSimilarityCandidates.length)cullOpenCandidate(next);
+ else cullCompareClose();
 }
+$('cullCompareKeepA').textContent='Keep A';
+$('cullCompareKeepB').textContent='Keep B';
 $('cullCompareKeepA').onclick=()=>cullCompareChoose(0);
 $('cullCompareKeepB').onclick=()=>cullCompareChoose(1);
+const cullCompareKeepBoth=document.createElement('button');
+cullCompareKeepBoth.type='button';cullCompareKeepBoth.id='cullCompareKeepBoth';
+cullCompareKeepBoth.textContent='Keep both';
+cullCompareKeepBoth.title='Preserve both moments in the editing selection';
+cullCompareKeepBoth.onclick=()=>cullCompareChoose(2);
+$('cullComparison').querySelector('.compare-header').append(cullCompareKeepBoth);
+const cullCompareProgress=document.createElement('span');
+cullCompareProgress.id='cullCompareProgress';
+cullCompareProgress.style.cssText='font-size:12px;opacity:.85;margin-left:8px';
+$('cullComparison').querySelector('.compare-header').append(cullCompareProgress);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cullComparison').hidden)cullCompareClose()});
 
 
@@ -874,6 +901,7 @@ function cullBurstControls(){
    $('cullCompareNameA').textContent=a.photo.file.name+' · '+a.reason;
    $('cullCompareNameB').textContent=b.photo.file.name+' · '+b.reason;
    $('cullComparison').hidden=false;cullCandidateCursor=-1;
+   if($('cullCompareProgress'))$('cullCompareProgress').textContent='Burst '+(cullBurstCursor+1)+' of '+cullBurstGroups.length+' · Choose A, B or both';
    cullCandidateRanking(a,b,-1);cullDraw();
   };
   const focus=document.createElement('button');focus.type='button';focus.id='cullBurstFocus';focus.textContent='Show burst photos';focus.onclick=()=>{
