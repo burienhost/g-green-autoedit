@@ -15,6 +15,13 @@ export function screenPhoto(e={}){
  if(e.detailEnergy<8)flags.push('Low measured detail: check focus and intentional blur');
  if(localizedDark)context.push('Mixed dark and lit regions; preserve creative low-key scenes');
  if(localizedBright)context.push('Mixed bright and shaded regions; preserve backlit scenes');
- if(e.faces?.available&&e.faces.count>0)context.push('Faces detected; overall exposure does not establish face exposure');
+ if(e.subjects?.available){
+  const subjects=e.subjects.subjects;
+  const shadowed=subjects.filter(x=>x.meanLuma<55||x.shadowFraction>.3).length;
+  const clipped=subjects.filter(x=>x.meanLuma>215||x.highlightFraction>.3).length;
+  if(shadowed)flags.push(shadowed+' detected face region(s) appear dark; inspect subject visibility');
+  if(clipped)flags.push(clipped+' detected face region(s) appear bright; inspect facial highlight detail');
+  if(!shadowed&&!clipped)context.push('Detected face regions have no obvious exposure warning at preview resolution');
+ }else if(e.faces?.available&&e.faces.count>0)context.push('Faces detected but local subject exposure unavailable; inspect manually');
  return {status:flags.length?'review':'keep',flags,context,confidence:flags.length?0:.35,automaticExclusion:false};
 }
