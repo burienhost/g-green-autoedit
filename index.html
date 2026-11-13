@@ -591,6 +591,9 @@ function cullDraw(){
   const meta=document.createElement('div');meta.className='cull-meta';
   const name=document.createElement('span');name.className='cull-filename';name.title=r.photo.file.name;name.textContent=r.photo.file.name;
   const reason=document.createElement('span');reason.className='cull-reason';reason.textContent=r.reason;
+  // Inspect the actual measurement behind borderline decisions without
+  // changing scores, classifications, billing or the original photograph.
+  if(r.metrics){const m=r.metrics;const fmt=v=>Number.isFinite(v)?Number(v).toFixed(2):'n/a';reason.title='Technical measurements — whole sharpness: '+fmt(m.sharp)+'; centre sharpness: '+fmt(m.centreSharp)+'; directional balance: '+fmt(m.directionalBalance)+'; gradient strength: '+fmt(m.gradientStrength)+'; exposure: '+fmt(m.brightness)+'; centre exposure: '+fmt(m.centreBrightness)+'; dark clipping: '+fmt(m.dark)+'; central dark clipping: '+fmt(m.centreDarkRatio);reason.setAttribute('aria-label',r.reason+'. '+reason.title);}
   const badge=document.createElement('span');badge.className='cull-badge';badge.textContent=r.manualKeep?(r.keep?'MANUAL KEEP':'MANUAL EXCLUDE'):(r.status==='exclude'?'EXCLUDE':r.status==='review'?'REVIEW':r.status==='keeper'?'KEEP':'MANUAL REVIEW');
   const label=document.createElement('label');label.className='cull-check';label.style.margin='0';
   const check=document.createElement('input');check.type='checkbox';check.checked=r.keep;check.setAttribute('aria-label','Keep '+r.photo.file.name);
