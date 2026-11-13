@@ -863,7 +863,7 @@ function cullBurstControls(){
  if(!bar){
   bar=document.createElement('div');bar.id='cullBurstControls';bar.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0;padding:8px;border:1px solid #5555;border-radius:10px';
   // Override legacy full-width button styling only inside the burst toolbar.
-  const compact=document.createElement('style');compact.textContent='#cullBurstControls button{width:auto!important;flex:0 1 auto!important;min-width:0!important;margin:0!important;padding:8px 11px!important;font-size:12px!important}#cullBurstLabel{flex:1 1 220px;font-size:12px}';bar.append(compact);
+  const compact=document.createElement('style');compact.textContent='#cullBurstControls[hidden]{display:none!important}#cullBurstControls button{width:auto!important;flex:0 1 auto!important;min-width:0!important;margin:0!important;padding:8px 11px!important;font-size:12px!important}#cullBurstLabel{flex:1 1 220px;font-size:12px}';bar.append(compact);
   const prev=document.createElement('button');prev.type='button';prev.textContent='Previous burst';prev.onclick=()=>{cullBurstCursor=Math.max(0,cullBurstCursor-1);cullBurstControls()};
   const next=document.createElement('button');next.type='button';next.textContent='Next burst';next.onclick=()=>{cullBurstCursor=Math.min(cullBurstGroups.length-1,cullBurstCursor+1);cullBurstControls()};
   const open=document.createElement('button');open.type='button';open.textContent='Compare strongest candidates';open.onclick=()=>{
