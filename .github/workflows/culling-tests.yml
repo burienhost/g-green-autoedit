@@ -1,0 +1,22 @@
+name: SNAPIC Phase 01 tests
+on:
+  push:
+    branches:
+      - development/snapic-culling-phase1
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/culling-tests.yml'
+jobs:
+  culling-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic culling tests
+        run: node --test tests/*.test.mjs
