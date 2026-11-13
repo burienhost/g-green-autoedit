@@ -665,8 +665,20 @@ cullCandidatePrev.type='button';cullCandidatePrev.id='cullCandidatePrev';cullCan
 cullCandidatePrev.onclick=()=>{if(cullCandidateCursor>0)cullOpenCandidate(cullCandidateCursor-1)};
 $('cullComparison').append(cullCandidatePrev);
 
-$('cullCompareKeepA').onclick=()=>{const [a,b]=cullCompareSelection;cullDecision(a,'keep',true);cullDecision(b,'keep',false);cullCompareClose()};
-$('cullCompareKeepB').onclick=()=>{const [a,b]=cullCompareSelection;cullDecision(a,'keep',false);cullDecision(b,'keep',true);cullCompareClose()};
+// One comparison choice is one reversible selection transaction.
+function cullCompareChoose(winner){
+ const [a,b]=cullCompareSelection;
+ if(!a||!b||a===b)return;
+ const state=cullCurrentState(),ids=[cullRows.indexOf(a),cullRows.indexOf(b)];
+ if(ids.some(id=>id<0))return;
+ const first=cullBridge().legacyBulk(state,[ids[winner]],true);
+ const second=cullBridge().legacyBulk(first.rows,[ids[1-winner]],false);
+ const changes=[...first.transaction,...second.transaction].filter(change=>change.before.selected!==change.after.selected||change.before.override!==change.after.override);
+ if(changes.length){cullUndoStack.push({transaction:changes});if(cullUndoStack.length>100)cullUndoStack.shift();cullApplyState(second.rows)}
+ cullCompareClose();
+}
+$('cullCompareKeepA').onclick=()=>cullCompareChoose(0);
+$('cullCompareKeepB').onclick=()=>cullCompareChoose(1);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cullComparison').hidden)cullCompareClose()});
 
 
