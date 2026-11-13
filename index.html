@@ -795,16 +795,46 @@ $('cullV3Mode').onchange=()=>{if(cullRows.length)cullV3ApplyRecommendations()};
 // Legacy measurements remain the fallback when workers or OffscreenCanvas are unavailable.
 let cullQualityWorker=null,cullQualitySerial=0;
 let cullSimilarityCandidates=[];
+let cullBurstGroups=[];
+let cullBurstCursor=0;
+function cullBurstControls(){
+ let bar=$('cullBurstControls');
+ if(!bar){
+  bar=document.createElement('div');bar.id='cullBurstControls';bar.style.margin='8px 0';
+  const prev=document.createElement('button');prev.type='button';prev.textContent='Previous burst';prev.onclick=()=>{cullBurstCursor=Math.max(0,cullBurstCursor-1);cullBurstControls()};
+  const next=document.createElement('button');next.type='button';next.textContent='Next burst';next.onclick=()=>{cullBurstCursor=Math.min(cullBurstGroups.length-1,cullBurstCursor+1);cullBurstControls()};
+  const open=document.createElement('button');open.type='button';open.textContent='Compare strongest candidates';open.onclick=()=>{
+   const g=cullBurstGroups[cullBurstCursor];if(!g||g.ranked.length<2)return;
+   const a=cullRows[g.ranked[0].index],b=cullRows[g.ranked[1].index];if(!a||!b)return;
+   cullCompareSelection=[a,b];
+   $('cullCompareImageA').src=photoUrl(a.photo);$('cullCompareImageB').src=photoUrl(b.photo);
+   $('cullCompareNameA').textContent=a.photo.file.name+' · '+a.reason;
+   $('cullCompareNameB').textContent=b.photo.file.name+' · '+b.reason;
+   $('cullComparison').hidden=false;cullCandidateCursor=-1;
+   cullCandidateRanking(a,b,-1);cullDraw();
+  };
+  const label=document.createElement('span');label.id='cullBurstLabel';label.style.margin='0 8px';
+  bar.append(prev,label,next,open);$('cullV3Stats').insertAdjacentElement('afterend',bar);
+ }
+ bar.hidden=!cullBurstGroups.length;if(!cullBurstGroups.length)return;
+ cullBurstCursor=Math.min(cullBurstCursor,cullBurstGroups.length-1);
+ const g=cullBurstGroups[cullBurstCursor];
+ $('cullBurstLabel').textContent='Possible burst '+(cullBurstCursor+1)+' of '+cullBurstGroups.length+' · '+g.members.length+' photos · '+(g.technicalLeader===null?'No clear technical leader':'Technical leader: '+cullRows[g.technicalLeader].photo.file.name)+' · Review moments manually';
+ bar.children[0].disabled=cullBurstCursor===0;bar.children[2].disabled=cullBurstCursor===cullBurstGroups.length-1;
+}
 async function cullRefreshSimilarityCandidates(){
  try{
   const {candidatePairs}=await import('./src/scene-candidates.mjs');
   const rows=cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid}));
   const result=candidatePairs(rows,{threshold:.035,maxPairs:500,window:12});
   cullSimilarityCandidates=result.pairs;
+  const {buildBurstCandidates}=await import('./src/burst-candidates.mjs');
+  const bursts=buildBurstCandidates(cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid,evidence:r.localEvidence})),{threshold:.035,window:12,maxGroups:300,maxMembers:60});
+  cullBurstGroups=bursts.groups;cullBurstCursor=0;cullBurstControls();
   cullCandidateControls();
-  const info=result.pairs.length+' possible visual matches identified for manual comparison'+(result.truncated?' (limit reached)':'')+'. No photographs excluded.';
+  const info=cullBurstGroups.length+' possible burst groups and '+result.pairs.length+' possible visual matches identified for manual comparison'+(result.truncated?' (limit reached)':'')+'. No photographs excluded.';
   $('cullV3Stats').textContent+=' '+info;
- }catch(e){console.warn('Visual candidate retrieval unavailable',e);cullSimilarityCandidates=[];cullCandidateControls()}
+ }catch(e){console.warn('Visual candidate retrieval unavailable',e);cullSimilarityCandidates=[];cullBurstGroups=[];cullBurstControls();cullCandidateControls()}
 }
 
 async function cullLocalQuality(photo){
