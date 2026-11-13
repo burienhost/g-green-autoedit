@@ -714,6 +714,11 @@ function cullV3Quality(m){
  // Exclude only when directional imbalance is severe AND both whole-frame
  // and central sharpness are weak. Less certain cases stay in Review.
  const severeDirectionalBlur=m.directionalBalance!=null&&m.directionalBalance<.18&&(m.gradientStrength||0)>12&&(m.sharp||0)<8&&(m.centreSharp||0)<8;
+ // Calibrated against DSC_0126: strong image-wide softness with substantial
+ // gradients is consistent with smeared edges even when X/Y balance is near 1.
+ // Require both centre and frame to be soft; do not infer blur from direction alone.
+ const pervasiveSmear=(m.sharp||0)<5.8&&(m.centreSharp||0)<5.8&&(m.gradientStrength||0)>12;
+ if(pervasiveSmear)score=Math.min(score,45);
  if(severeDirectionalBlur)score=Math.min(score,45);
  else if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)score=Math.min(score,74);
  return score;
@@ -723,6 +728,7 @@ function cullV3Defects(m){
  if(!m)return ['analysis unavailable'];
  const issues=[];
  if((m.sharp||0)<5&&(m.centreSharp||0)<5)issues.push('possible blur');
+ if((m.sharp||0)<5.8&&(m.centreSharp||0)<5.8&&(m.gradientStrength||0)>12)issues.push('pervasive edge smear / likely motion blur');
  if((m.brightness||0)<65||(m.brightness||0)>195)issues.push('poor exposure');
  if((m.light||0)>.15)issues.push('clipped highlights');
  if((m.dark||0)>.15&&(m.centreDarkRatio==null||m.centreDarkRatio>.12))issues.push('crushed shadows');
