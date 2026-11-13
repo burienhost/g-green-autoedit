@@ -707,7 +707,12 @@ function cullV3Quality(m){
  else if(darkCorroborated||lightCorroborated)score=Math.min(score,70);
  // Strongly one-directional edges can indicate camera movement; flag for human review,
  // not automatic exclusion, because architecture and other subjects may be directional.
- if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)score=Math.min(score,74);
+ // A directional streak alone is not enough to exclude a photograph.
+ // Exclude only when directional imbalance is severe AND both whole-frame
+ // and central sharpness are weak. Less certain cases stay in Review.
+ const severeDirectionalBlur=m.directionalBalance!=null&&m.directionalBalance<.18&&(m.gradientStrength||0)>12&&(m.sharp||0)<8&&(m.centreSharp||0)<8;
+ if(severeDirectionalBlur)score=Math.min(score,45);
+ else if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)score=Math.min(score,74);
  return score;
 }
 function cullV3Band(m){if(!m)return 'Review';const score=cullV3Quality(m);return score>=75?'Keep':score>=50?'Review':'Exclude'}
@@ -719,7 +724,8 @@ function cullV3Defects(m){
  if((m.light||0)>.15)issues.push('clipped highlights');
  if((m.dark||0)>.15&&(m.centreDarkRatio==null||m.centreDarkRatio>.12))issues.push('crushed shadows');
  if(((m.sharp||0)+(m.centreSharp||0))<12)issues.push('low detail');
- if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)issues.push('possible directional motion blur');
+ if(m.directionalBalance!=null&&m.directionalBalance<.18&&(m.gradientStrength||0)>12&&(m.sharp||0)<8&&(m.centreSharp||0)<8)issues.push('severe directional motion blur');
+ else if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)issues.push('possible directional motion blur');
  return issues;
 }
 function cullV3ApplyRecommendations(){
