@@ -587,7 +587,7 @@ function cullDraw(){
   const meta=document.createElement('div');meta.className='cull-meta';
   const name=document.createElement('span');name.className='cull-filename';name.title=r.photo.file.name;name.textContent=r.photo.file.name;
   const reason=document.createElement('span');reason.className='cull-reason';reason.textContent=r.reason;
-  const badge=document.createElement('span');badge.className='cull-badge';badge.textContent=r.defects?.length?'TECHNICAL REVIEW':r.group?'COMPARE SHOTS':r.metrics?'TECHNICAL PASS':'MANUAL REVIEW';
+  const badge=document.createElement('span');badge.className='cull-badge';badge.textContent=r.status==='exclude'?'EXCLUDE':r.status==='review'?'REVIEW':r.status==='keeper'?'KEEP':'MANUAL REVIEW';
   const label=document.createElement('label');label.className='cull-check';label.style.margin='0';
   const check=document.createElement('input');check.type='checkbox';check.checked=r.keep;check.setAttribute('aria-label','Keep '+r.photo.file.name);
   const caption=document.createElement('span');caption.textContent='Keep for editing';
@@ -596,7 +596,7 @@ function cullDraw(){
   const rating=document.createElement('div');rating.className='cull-rating';rating.setAttribute('aria-label','Photo rating');
   for(let stars=1;stars<=5;stars++){const star=document.createElement('button');star.type='button';star.textContent='★';star.className=stars<=Number(r.rating||0)?'selected':'';star.setAttribute('aria-label','Rate '+stars+' stars');star.onclick=()=>cullDecision(r,'rating',stars===r.rating?0:stars);rating.append(star)}
   const compare=document.createElement('button');compare.type='button';compare.className='cull-compare';compare.textContent=cullCompareSelection.includes(r)?'Selected for comparison':'Compare';compare.onclick=()=>cullChooseCompare(r);
-  if(Number.isFinite(r.score)){const score=document.createElement('span');score.className='cull-reason';score.textContent='Technical indicators only · not a validated quality score';meta.append(score)}meta.append(name,badge,reason,label,rating,compare);row.append(img,meta);fragment.append(row);
+  if(Number.isFinite(r.score)){const score=document.createElement('span');score.className='cull-reason';score.textContent='Automated technical rating: '+r.score+'/100 · '+r.qualityBand;meta.append(score)}meta.append(name,badge,reason,label,rating,compare);row.append(img,meta);fragment.append(row);
  }
  host.append(fragment);
  const pager=$('cullPager');pager.replaceChildren();if(pages>1){const prev=document.createElement('button'),next=document.createElement('button'),label=document.createElement('span');prev.textContent='← Previous';next.textContent='Next →';prev.disabled=cullPage===0;next.disabled=cullPage>=pages-1;label.textContent='Page '+(cullPage+1)+' of '+pages+' · '+visible.length+' photographs';prev.onclick=()=>{cullPage--;cullDraw()};next.onclick=()=>{cullPage++;cullDraw()};pager.append(prev,label,next)}
@@ -682,28 +682,40 @@ function cullV3Recommend(rows,mode='balanced',target=0){
   const leader=g[0],label='Comparison '+(index+1);
   for(const r of g){r.group=label;r.bestInGroup=r===leader}
  }
- let review=0,defects=0,keeper=0;
+ let review=0,defects=0,keeper=0,excluded=0;
  for(const r of rows){
+  const m=r.metrics,quality=cullV3Quality(m);
+  r.score=quality;
+  r.rating=m?Math.max(1,Math.min(5,Math.ceil(quality/20))):0;
   const issues=r.defects||[];
-  if(!r.metrics){r.status='review';r.reason='Analysis unavailable · inspect manually';review++}
-  else if(issues.length){r.status='review';r.reason='Technical review: '+issues.join(', ');review++;defects++}
-  else if(r.group){r.status='review';r.reason=r.bestInGroup?'Strongest measured candidate in '+r.group+' · verify subject and expression':r.group+' · compare before excluding';review++}
-  else{r.status='keeper';r.reason='No obvious technical defect detected';keeper++}
-  // Never silently exclude for a target count or resemblance. Preserve explicit choices.
-  if(!r.manualKeep)r.keep=true;
+  if(!m){r.status='review';r.reason='Analysis unavailable · inspect manually';review++}
+  else if(quality<50){r.status='exclude';r.reason='Technical score '+quality+'/100 · '+(issues.join(', ')||'low overall technical quality');excluded++;defects++}
+  else if(quality<75){r.status='review';r.reason='Technical score '+quality+'/100 · '+(issues.join(', ')||'borderline technical quality');review++}
+  else{r.status='keeper';r.reason='Technical score '+quality+'/100 · suitable for editing';keeper++}
+  if(!r.manualKeep)r.keep=r.status!=='exclude';
  }
- const requested=target>0?' Target of '+target+' is advisory; no forced exclusions.':'';
- return {scenes:groups.length,keepers:rows.filter(r=>r.keep).length,duplicates:ranked.reduce((n,g)=>n+g.length,0),review,defects,desired:rows.length,message:keeper+' technically suitable · '+review+' need review · '+defects+' possible technical issues.'+requested};
+ const requested=target>0?' Target is advisory; technical thresholds determine selection.':'';
+ return {scenes:groups.length,keepers:rows.filter(r=>r.keep).length,duplicates:ranked.reduce((n,g)=>n+g.length,0),review,defects,desired:rows.length,message:keeper+' pass (75+) · '+review+' review (50–74) · '+excluded+' excluded (<50).'+requested};
 }
-function cullV3Quality(m){if(!m)return -1;return (m.sharp||0)*.6+(m.centreSharp||0)*.4-Math.max(0,(m.dark||0)-.18)*65-Math.max(0,(m.light||0)-.18)*65}
-function cullV3Band(m){if(!m)return 'Unknown';const defects=cullV3Defects(m);return defects.length?'Review':'Unverified technical pass'}
+function cullV3Quality(m){
+ if(!m)return 0;
+ const clamp=(v)=>Math.max(0,Math.min(1,v));
+ const sharp=clamp(((m.sharp||0)*.6+(m.centreSharp||0)*.4-2)/14);
+ const exposure=clamp(1-Math.abs((m.brightness||0)-128)/128);
+ const highlights=clamp(1-(m.light||0)/.25);
+ const shadows=clamp(1-(m.dark||0)/.25);
+ const detail=clamp(((m.sharp||0)+(m.centreSharp||0))/24);
+ return Math.round(100*(.4*sharp+.2*exposure+.15*highlights+.15*shadows+.1*detail));
+}
+function cullV3Band(m){if(!m)return 'Review';const score=cullV3Quality(m);return score>=75?'Keep':score>=50?'Review':'Exclude'}
 function cullV3Defects(m){
  if(!m)return ['analysis unavailable'];
  const issues=[];
- // Conservative heuristics: flag for human review, never classify as proven failures.
- if(m.sharp<5&&m.centreSharp<5)issues.push('possible softness');
- if(m.dark>.42&&m.brightness<65)issues.push('extensive crushed shadows');
- if(m.light>.42&&m.brightness>190)issues.push('extensive clipped highlights');
+ if((m.sharp||0)<5&&(m.centreSharp||0)<5)issues.push('possible blur');
+ if((m.brightness||0)<65||(m.brightness||0)>195)issues.push('poor exposure');
+ if((m.light||0)>.15)issues.push('clipped highlights');
+ if((m.dark||0)>.15)issues.push('crushed shadows');
+ if(((m.sharp||0)+(m.centreSharp||0))<12)issues.push('low detail');
  return issues;
 }
 function cullV3ApplyRecommendations(){
