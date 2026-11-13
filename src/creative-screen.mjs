@@ -22,6 +22,12 @@ export function screenPhoto(e={}){
   if(shadowed)flags.push(shadowed+' detected face region(s) appear dark; inspect subject visibility');
   if(clipped)flags.push(clipped+' detected face region(s) appear bright; inspect facial highlight detail');
   if(!shadowed&&!clipped)context.push('Detected face regions have no obvious exposure warning at preview resolution');
+  // Relative texture difference prompts inspection; it does not prove the subject is out of focus.
+  const assessable=subjects.filter(x=>Number.isFinite(x.detailEnergy));
+  const lowRelative=assessable.filter(x=>Number.isFinite(e.detailEnergy)&&e.detailEnergy>=80&&x.detailEnergy<e.detailEnergy*.12&&x.detailEnergy<30);
+  if(lowRelative.length)flags.push(lowRelative.length+' detected face region(s) have much less preview texture than the overall image; inspect subject sharpness');
+  if(subjects.length&&!assessable.length)context.push('Face regions too small for meaningful preview texture comparison');
+  if(assessable.length&&!lowRelative.length)context.push('Face-region texture measured; eye sharpness and focus remain unverified');
  }else if(e.faces?.available&&e.faces.count>0)context.push('Faces detected but local subject exposure unavailable; inspect manually');
  return {status:flags.length?'review':'keep',flags,context,confidence:flags.length?0:.35,automaticExclusion:false};
 }
