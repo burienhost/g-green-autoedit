@@ -4,7 +4,7 @@ async function loadApp(page) {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => typeof window.cullDraw === 'function' && typeof window.cullBridge === 'function' && !!window.cullBridge(), { timeout: 20000 });
+  await page.waitForFunction(() => typeof window.cullDraw === 'function' && typeof window.cullBridge === 'function' && !!window.cullBridge(), null, { timeout: 20000 });
   return errors;
 }
 async function seed(page) {
@@ -15,11 +15,11 @@ async function seed(page) {
       metrics: { brightness: 110 }, defects: i < 103 ? ['needs inspection'] : [],
       reason: 'Pending review', status: 'review'
     }));
-    window.cullRows = rows;
-    window.cullScanned = true;
-    window.cullBusy = false;
-    window.cullUndoStack = [];
-    window.cullPage = 0;
+    cullRows = rows;
+    cullScanned = true;
+    cullBusy = false;
+    cullUndoStack = [];
+    cullPage = 0;
     window.cullApplyState(window.cullBridge().hydrateLegacy(rows, 'balanced'));
     // Thumbnail loading is irrelevant to selection semantics and uses synthetic File records.
     window.cullThumbObserve = () => {};
