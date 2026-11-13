@@ -15,6 +15,11 @@ export function screenPhoto(e={}){
  if(e.detailEnergy<8)flags.push('Low measured detail: check focus and intentional blur');
  if(localizedDark)context.push('Mixed dark and lit regions; preserve creative low-key scenes');
  if(localizedBright)context.push('Mixed bright and shaded regions; preserve backlit scenes');
+ if(e.spatialDetail?.available){
+  const d=e.spatialDetail;
+  if(d.centerLowRelative)context.push('Central region has much less fine detail than another region; inspect focus placement if your subject is centered');
+  else context.push('Spatial detail map measured across nine image regions; subject location remains unknown');
+ }
  if(e.faceCropDetail?.available){
   const crops=e.faceCropDetail.regions.filter(x=>x.assessable);
   const lowTexture=crops.filter(x=>x.detailEnergy<12&&x.contrastStdDev<28);
