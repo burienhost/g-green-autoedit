@@ -575,7 +575,7 @@ async function cullRefreshPricing(){
  }catch(e){if(request===cullQuoteRequest)$('cullPricing').textContent='Could not load culling balance: '+e.message}
 }
 $('cullWalletRefresh').onclick=()=>cullRefreshPricing().catch(()=>{});
-function cullReset(){cullPage=0;$('cullV3Apply').disabled=true;$('cullV3Stats').textContent='Engine 3.0 · review recommendations before editing.';cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
+function cullReset(){cullSimilarityCandidates=[];if($('cullCandidateOpen'))$('cullCandidateOpen').hidden=true;cullPage=0;$('cullV3Apply').disabled=true;$('cullV3Stats').textContent='Engine 3.0 · review recommendations before editing.';cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
 function cullSummary(){const keep=cullRows.filter(r=>r.keep).length;const review=cullRows.filter(r=>r.status==='review').length,exclude=cullRows.filter(r=>r.status==='exclude').length;$('cullSummary').textContent=keep+' selected for editing · '+(cullRows.length-keep)+' not selected · '+review+' need review · '+exclude+' recommended exclude. Originals untouched.';$('cullApply').disabled=!keep||cullBusy;$('cullUndo').disabled=!cullUndoStack.length}
 function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;const oldManual=row.manualKeep;if(field==='keep')row.manualKeep=true;cullUndoStack.push({row,field,previous,oldManual});if(cullUndoStack.length>100)cullUndoStack.shift();row[field]=value;$('cullUndo').disabled=false;cullDraw()}
 $('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
@@ -617,6 +617,32 @@ $('cullFilter').onchange=()=>{cullPage=0;cullDraw()};
 $('cullSelectVisible').onclick=()=>cullBulkSelection(cullVisibleRows(),true);
 $('cullRejectVisible').onclick=()=>cullBulkSelection(cullVisibleRows(),false);
 
+let cullCandidateCursor=-1;
+function cullOpenCandidate(index){
+ const pair=cullSimilarityCandidates[index];
+ if(!pair)return;
+ const a=cullRows[pair.a],b=cullRows[pair.b];
+ if(!a||!b)return;
+ cullCandidateCursor=index;
+ if($('cullCandidatePrev'))$('cullCandidatePrev').disabled=index===0;
+ if($('cullCandidateNext'))$('cullCandidateNext').disabled=index>=cullSimilarityCandidates.length-1;
+ cullCompareSelection=[a,b];
+ $('cullCompareImageA').src=photoUrl(a.photo);$('cullCompareImageB').src=photoUrl(b.photo);
+ $('cullCompareNameA').textContent=a.photo.file.name+' · '+a.reason;
+ $('cullCompareNameB').textContent=b.photo.file.name+' · '+b.reason;
+ $('cullComparison').hidden=false;
+ cullDraw();
+}
+function cullCandidateControls(){
+ let button=$('cullCandidateOpen');
+ if(!button){
+  button=document.createElement('button');button.id='cullCandidateOpen';button.type='button';
+  button.style.margin='8px 0';button.onclick=()=>cullOpenCandidate(0);
+  $('cullV3Stats').insertAdjacentElement('afterend',button);
+ }
+ button.hidden=!cullSimilarityCandidates.length;
+ button.textContent='Review '+cullSimilarityCandidates.length+' possible visual match'+(cullSimilarityCandidates.length===1?'':'es')+' side by side';
+}
 function cullChooseCompare(row){
  if(cullCompareSelection.includes(row)){cullCompareSelection=cullCompareSelection.filter(r=>r!==row);cullDraw();return}
  cullCompareSelection.push(row);
@@ -628,8 +654,17 @@ function cullChooseCompare(row){
   $('cullComparison').hidden=false;
  }cullDraw();
 }
-function cullCompareClose(){ $('cullComparison').hidden=true;cullCompareSelection=[];cullDraw() }
+function cullCompareClose(){ $('cullComparison').hidden=true;cullCompareSelection=[];cullCandidateCursor=-1;cullDraw() }
 $('cullCompareClose').onclick=cullCompareClose;
+const cullCandidateNext=document.createElement('button');
+cullCandidateNext.type='button';cullCandidateNext.id='cullCandidateNext';cullCandidateNext.textContent='Next possible match';
+cullCandidateNext.onclick=()=>{if(cullCandidateCursor>=0&&cullCandidateCursor+1<cullSimilarityCandidates.length)cullOpenCandidate(cullCandidateCursor+1)};
+$('cullComparison').append(cullCandidateNext);
+const cullCandidatePrev=document.createElement('button');
+cullCandidatePrev.type='button';cullCandidatePrev.id='cullCandidatePrev';cullCandidatePrev.textContent='Previous possible match';
+cullCandidatePrev.onclick=()=>{if(cullCandidateCursor>0)cullOpenCandidate(cullCandidateCursor-1)};
+$('cullComparison').append(cullCandidatePrev);
+
 $('cullCompareKeepA').onclick=()=>{const [a,b]=cullCompareSelection;cullDecision(a,'keep',true);cullDecision(b,'keep',false);cullCompareClose()};
 $('cullCompareKeepB').onclick=()=>{const [a,b]=cullCompareSelection;cullDecision(a,'keep',false);cullDecision(b,'keep',true);cullCompareClose()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cullComparison').hidden)cullCompareClose()});
@@ -734,9 +769,10 @@ async function cullRefreshSimilarityCandidates(){
   const rows=cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid}));
   const result=candidatePairs(rows,{threshold:.035,maxPairs:500,window:12});
   cullSimilarityCandidates=result.pairs;
+  cullCandidateControls();
   const info=result.pairs.length+' possible visual matches identified for manual comparison'+(result.truncated?' (limit reached)':'')+'. No photographs excluded.';
   $('cullV3Stats').textContent+=' '+info;
- }catch(e){console.warn('Visual candidate retrieval unavailable',e);cullSimilarityCandidates=[]}
+ }catch(e){console.warn('Visual candidate retrieval unavailable',e);cullSimilarityCandidates=[];cullCandidateControls()}
 }
 
 async function cullLocalQuality(photo){
