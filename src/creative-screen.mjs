@@ -22,6 +22,10 @@ export function screenPhoto(e={}){
    context.push('Visual-attention candidates at '+positions+'; these are not verified subjects');
   }else context.push('No distinct visual-attention region found; subject location unknown');
  }
+ if(e.attentionCropDetail?.available){
+  const crops=e.attentionCropDetail.regions.filter(x=>x.assessable);
+  if(crops.length)context.push(crops.length+' visually distinctive source-image region(s) assessed for detail and exposure; subject identity and focus are unverified');
+ }
  if(e.spatialDetail?.available){
   const d=e.spatialDetail;
   if(d.centerLowRelative)context.push('Central region has much less fine detail than another region; inspect focus placement if your subject is centered');
