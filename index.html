@@ -568,12 +568,12 @@ function cullApplyRecommendedShortlist(){
  const toDeselect=undecided.filter(r=>r.status!=='keep'&&r.keep);
  const toSelect=undecided.filter(r=>r.status==='keep'&&!r.keep);
  if(!toDeselect.length&&!toSelect.length){alert('Your editing selection already matches the available recommendations.');return;}
- const message='Apply SNAPIC preliminary shortlist?\\n\\n'+toSelect.length+' recommended Keep photos will be selected.\\n'+toDeselect.length+' Review/Exclude photos will be deselected from editing (NOT deleted).\\n\\nProtected moments and manual decisions stay unchanged. Undo restores the selection. Recommendations are unvalidated and require your review.';
+ const message='Apply SNAPIC preliminary shortlist?\n\n'+toSelect.length+' recommended Keep photos will be selected.\n'+toDeselect.length+' Review/Exclude photos will be deselected from editing (NOT deleted).\n\nProtected moments and manual decisions stay unchanged. Undo restores the selection. Recommendations are unvalidated and require your review.';
  if(!confirm(message))return;
- const ids=[...toSelect.map(r=>cullRows.indexOf(r)),...toDeselect.map(r=>cullRows.indexOf(r))];
+ const ids=new Set([...toSelect.map(r=>cullRows.indexOf(r)),...toDeselect.map(r=>cullRows.indexOf(r))]);
  const state=cullCurrentState(),changes=[];
  const next=state.map(row=>{
-  if(!ids.includes(row.id))return row;
+  if(!ids.has(row.id))return row;
   const selected=row.recommendation.status==='keep';
   changes.push({id:row.id,before:{selected:row.selected,override:row.override},after:{selected,override:selected?'include':'exclude'}});
   return {...row,selected,override:selected?'include':'exclude'};
