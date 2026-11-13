@@ -683,16 +683,30 @@ function cullV3Recommend(rows){
   else{r.status='keeper';r.reason='Technical score '+r.score+'/100 · qualifies for editing';keeper++}
   if(!r.manualKeep)r.keep=r.status==='keeper';
  }
- // Only compare adjacent photographs with a strong visual match. Different angles
- // and scenes remain independent; no photograph is rejected because of similarity.
- let group=[];
- const finish=()=>{if(!group.length)return;const candidates=group.filter(r=>r.keep&&r.score>=95);if(candidates.length){candidates.sort((a,b)=>b.score-a.score||((b.metrics.centreSharp||0)-(a.metrics.centreSharp||0)));candidates[0].bestPick=true;candidates[0].bestInGroup=true;}group=[]};
+ // Whole-batch comparison of technically elite candidates. Similar photographs
+ // can be separated by other subjects or scenes in the imported batch.
+ // Preserve every Keep/Review/Exclude decision; only the gold shortlist changes.
+ // Compare against every member of a matched group to avoid transitive chaining.
+ const groups=[];
  for(const row of rows){
-  const last=group[0];
-  if(last&&cullCompositionMatch(last.metrics,row.metrics))group.push(row);
-  else{finish();group=[row]}
+  if(!row.keep||row.score<95)continue;
+  let match=null;
+  for(const group of groups){
+   if(group.members.every(other=>cullCompositionMatch(other.metrics,row.metrics))){
+    match=group;break;
+   }
+  }
+  if(match)match.members.push(row);
+  else groups.push({members:[row]});
  }
- finish();
+ for(const group of groups){
+  let winner=group.members[0];
+  for(const candidate of group.members.slice(1)){
+   if(candidate.score>winner.score||
+     (candidate.score===winner.score&&(candidate.metrics.centreSharp||0)>(winner.metrics.centreSharp||0)))winner=candidate;
+  }
+  winner.bestPick=true;winner.bestInGroup=true;
+ }
  return {keepers:keeper,review,excluded,message:rows.filter(r=>r.bestPick&&r.keep).length+' Best Picks (95–100) · '+keeper+' Keep (75–100) · '+review+' Review (50–74 or unavailable) · '+excluded+' Exclude (0–49).'};
 }
 function cullCompositionMatch(a,b){
