@@ -793,7 +793,7 @@ $('cullV3Mode').onchange=()=>{if(cullRows.length)cullV3ApplyRecommendations()};
 
 // Phase 03: worker-first local pixel analysis with bounded per-photo lifetime.
 // Legacy measurements remain the fallback when workers or OffscreenCanvas are unavailable.
-let cullQualityWorker=null,cullQualitySerial=0;
+let cullQualitySerial=0;
 let cullSimilarityCandidates=[];
 let cullBurstGroups=[];
 let cullBurstCursor=0;
@@ -870,18 +870,23 @@ async function cullRefreshSimilarityCandidates(){
  }catch(e){console.warn('Visual candidate retrieval unavailable',e);cullSimilarityCandidates=[];cullBurstGroups=[];cullBurstFocusIds=null;cullBurstControls();cullCandidateControls()}
 }
 
-async function cullLocalQuality(photo){
+// Two bounded browser workers: only two images in flight; no full-gallery file copies.
+const cullQualityWorkers=[null,null];
+async function cullLocalQuality(photo,slot=0){
  if(typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined')return null;
- if(!cullQualityWorker){try{cullQualityWorker=new Worker('./src/photo-quality-worker.mjs',{type:'module'})}catch(e){console.warn('Photo quality worker unavailable',e);return null}}
- const worker=cullQualityWorker,jobId='quality-'+(++cullQualitySerial);
+ if(!cullQualityWorkers[slot]){
+  try{cullQualityWorkers[slot]=new Worker('./src/photo-quality-worker.mjs',{type:'module'})}
+  catch(e){console.warn('Photo quality worker unavailable',e);return null}
+ }
+ const worker=cullQualityWorkers[slot],jobId='quality-'+(++cullQualitySerial);
  return new Promise(resolve=>{
   let done=false;
   const finish=value=>{if(done)return;done=true;clearTimeout(timer);worker.removeEventListener('message',onMessage);worker.removeEventListener('error',onError);resolve(value)};
   const onMessage=event=>{if(event.data?.type==='photo-result'&&event.data.jobId===jobId)finish(event.data.evidence)};
-  const onError=()=>{finish(null);worker.terminate();if(cullQualityWorker===worker)cullQualityWorker=null};
-  const timer=setTimeout(()=>{onError()},15000);
+  const onError=()=>{finish(null);worker.terminate();if(cullQualityWorkers[slot]===worker)cullQualityWorkers[slot]=null};
+  const timer=setTimeout(onError,15000);
   worker.addEventListener('message',onMessage);worker.addEventListener('error',onError);
-  try{worker.postMessage({type:'analyze-photo',jobId,index:0,file:photo.file})}catch(e){onError()}
+  try{worker.postMessage({type:'analyze-photo',jobId,index:slot,file:photo.file})}catch(e){onError()}
  });
 }
 async function cullMeasure(photo){
@@ -931,16 +936,18 @@ function cullTechnicalReason(m){
 }
 
 $('cullScan').onclick=async()=>{if(cullBusy||batchRunning||exportRunning||!photos.length||cullScanned)return;let quote;try{quote=await creditApi('rpc/autoedit_cull_quote',{method:'POST',body:JSON.stringify({p_photo_count:photos.length})})}catch(e){alert('Cannot verify culling allowance: '+e.message);return}if(quote.credits_to_debit_now>quote.wallet_credits){alert('Insufficient credits. This culling batch needs '+quote.credits_to_debit_now+' credit(s), but your balance is '+quote.wallet_credits+'.');return}if(!confirm('Cull '+photos.length+' photos? '+quote.free_count+' free, '+quote.paid_count+' paid at R0.10 each (R'+(quote.price_cents/100).toFixed(2)+'). '+quote.credits_to_debit_now+' credit(s) will be debited now. Charges apply once per submitted batch, including if analysis is interrupted.'))return;cullBusy=true;$('cullScan').disabled=true;$('cullApply').disabled=true;cullRows=[];$('cullReview').replaceChildren();$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;try{const receipt=await creditApi('rpc/autoedit_cull_charge',{method:'POST',body:JSON.stringify({p_operation_id:crypto.randomUUID(),p_photo_count:photos.length})});$('cullPricing').textContent='Charged: '+receipt.paid_count+' paid culls, '+receipt.free_count+' free · '+receipt.charged_credits+' credit(s) deducted.';await editorRefreshCredits().catch(()=>{});cullScanned=true;
-for(let i=0;i<photos.length;i++){
- const p=photos[i];let m=null,localEvidence=null;
- try{localEvidence=await cullLocalQuality(p)}catch(e){}
- // The worker already decoded and measured this image. Avoid a second main-thread decode.
- // Legacy measurements are a fallback only when browser-local worker analysis fails.
- if(!localEvidence?.analyzed){try{m=await cullMeasure(p)}catch(e){}}
- const localReason=localEvidence?.analyzed?'Local image signals ready · review subject and moment':'Analysis unavailable · manual review';
- cullRows.push({photo:p,keep:true,reason:m?cullTechnicalReason(m):localReason,rating:0,score:null,group:null,metrics:m,localEvidence,manualKeep:false});
- $('cullSummary').textContent='Engine 3.0 analysing '+(i+1)+' / '+photos.length+' photos…';
- if(i%3===0)await new Promise(resolve=>setTimeout(resolve,0));
+// Process in bounded pairs: faster on capable devices, controlled memory on smaller ones.
+for(let start=0;start<photos.length;start+=2){
+ const batch=photos.slice(start,start+2);
+ const evidence=await Promise.all(batch.map((p,slot)=>cullLocalQuality(p,slot).catch(()=>null)));
+ for(let slot=0;slot<batch.length;slot++){
+  const p=batch[slot],localEvidence=evidence[slot];let m=null;
+  if(!localEvidence?.analyzed){try{m=await cullMeasure(p)}catch(e){}}
+  const localReason=localEvidence?.analyzed?'Local image signals ready · review subject and moment':'Analysis unavailable · manual review';
+  cullRows.push({photo:p,keep:true,reason:m?cullTechnicalReason(m):localReason,rating:0,score:null,group:null,metrics:m,localEvidence,manualKeep:false});
+ }
+ $('cullSummary').textContent='Engine 3.0 analysing '+Math.min(start+batch.length,photos.length)+' / '+photos.length+' photos…';
+ await new Promise(resolve=>setTimeout(resolve,0));
 }
 $('cullV3Apply').disabled=false;cullV3ApplyRecommendations();await cullRefreshSimilarityCandidates();$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;cullSummary();cullRefreshPricing().catch(()=>{})}};
 $('cullKeepAll').onclick=()=>cullBulkSelection(cullRows,true);
