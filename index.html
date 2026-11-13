@@ -559,7 +559,7 @@ $('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){last.row[last
 $('cullRatingFilter').onchange=()=>cullDraw();
 function cullVisibleRows(){
  const filter=$('cullFilter').value;
- return cullRows.filter(r=>(filter==='all'||(filter==='keepers'&&r.keep)||(filter==='review'&&!r.keep)||(filter==='duplicates'&&r.reason.startsWith('Possible near-duplicate')))&&Number(r.rating||0)>=Number($('cullRatingFilter').value));
+ return cullRows.filter(r=>(filter==='all'||(filter==='keepers'&&r.keep)||(filter==='review'&&!r.keep)||(filter==='duplicates'&&!!r.group))&&Number(r.rating||0)>=Number($('cullRatingFilter').value));
 }
 function cullDraw(){
  const host=$('cullReview');host.replaceChildren();
@@ -570,7 +570,7 @@ function cullDraw(){
   const meta=document.createElement('div');meta.className='cull-meta';
   const name=document.createElement('span');name.className='cull-filename';name.title=r.photo.file.name;name.textContent=r.photo.file.name;
   const reason=document.createElement('span');reason.className='cull-reason';reason.textContent=r.reason;
-  const badge=document.createElement('span');badge.className='cull-badge';badge.textContent=r.reason.startsWith('Possible near-duplicate')?'POSSIBLE DUPLICATE':r.reason==='Looks suitable'?'LOOKS SUITABLE':'REVIEW SUGGESTED';
+  const badge=document.createElement('span');badge.className='cull-badge';badge.textContent=r.group?'SIMILAR SHOT':r.reason==='Looks technically suitable'?'LOOKS SUITABLE':'REVIEW SUGGESTED';
   const label=document.createElement('label');label.className='cull-check';label.style.margin='0';
   const check=document.createElement('input');check.type='checkbox';check.checked=r.keep;check.setAttribute('aria-label','Keep '+r.photo.file.name);
   const caption=document.createElement('span');caption.textContent='Keep for editing';
@@ -579,7 +579,7 @@ function cullDraw(){
   const rating=document.createElement('div');rating.className='cull-rating';rating.setAttribute('aria-label','Photo rating');
   for(let stars=1;stars<=5;stars++){const star=document.createElement('button');star.type='button';star.textContent='★';star.className=stars<=Number(r.rating||0)?'selected':'';star.setAttribute('aria-label','Rate '+stars+' stars');star.onclick=()=>cullDecision(r,'rating',stars===r.rating?0:stars);rating.append(star)}
   const compare=document.createElement('button');compare.type='button';compare.className='cull-compare';compare.textContent=cullCompareSelection.includes(r)?'Selected for comparison':'Compare';compare.onclick=()=>cullChooseCompare(r);
-  meta.append(name,badge,reason,label,rating,compare);row.append(img,meta);fragment.append(row);
+  if(Number.isFinite(r.score)){const score=document.createElement('span');score.className='cull-reason';score.textContent='Technical score: '+r.score+'/100 · advisory';meta.append(score)}meta.append(name,badge,reason,label,rating,compare);row.append(img,meta);fragment.append(row);
  }
  host.append(fragment);
  if(!visible.length&&cullRows.length)host.textContent='No photographs match this filter.';
@@ -608,8 +608,70 @@ $('cullCompareKeepA').onclick=()=>{const [a,b]=cullCompareSelection;cullDecision
 $('cullCompareKeepB').onclick=()=>{const [a,b]=cullCompareSelection;cullDecision(a,'keep',false);cullDecision(b,'keep',true);cullCompareClose()};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cullComparison').hidden)cullCompareClose()});
 
-async function cullMeasure(photo){const img=new Image();img.src=photoUrl(photo);try{await img.decode();const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,64,64);const data=ctx.getImageData(0,0,64,64).data;const gray=new Float32Array(4096);let total=0,edges=0;for(let y=0;y<64;y++)for(let x=0;x<64;x++){const k=y*64+x,p=k*4;gray[k]=.299*data[p]+.587*data[p+1]+.114*data[p+2];total+=gray[k]}let sharp=0;for(let y=1;y<63;y++)for(let x=1;x<63;x++){const k=y*64+x;sharp+=Math.abs(4*gray[k]-gray[k-1]-gray[k+1]-gray[k-64]-gray[k+64]);edges++}const blocks=[];for(let y=0;y<8;y++)for(let x=0;x<8;x++){let v=0;for(let j=0;j<8;j++)for(let i=0;i<8;i++)v+=gray[(y*8+j)*64+x*8+i];blocks.push(v/64)}const avg=blocks.reduce((a,b)=>a+b,0)/64;return {sharp:sharp/edges,brightness:total/4096,hash:blocks.map(v=>v>avg?1:0)}}finally{/* Object URL remains valid for the culling contact sheet; loadFiles releases it. */}}
-$('cullScan').onclick=async()=>{if(cullBusy||batchRunning||exportRunning||!photos.length||cullScanned)return;let quote;try{quote=await creditApi('rpc/autoedit_cull_quote',{method:'POST',body:JSON.stringify({p_photo_count:photos.length})})}catch(e){alert('Cannot verify culling allowance: '+e.message);return}if(quote.credits_to_debit_now>quote.wallet_credits){alert('Insufficient credits. This culling batch needs '+quote.credits_to_debit_now+' credit(s), but your balance is '+quote.wallet_credits+'.');return}if(!confirm('Cull '+photos.length+' photos? '+quote.free_count+' free, '+quote.paid_count+' paid at R0.10 each (R'+(quote.price_cents/100).toFixed(2)+'). '+quote.credits_to_debit_now+' credit(s) will be debited now. Charges apply once per submitted batch, including if analysis is interrupted.'))return;cullBusy=true;$('cullScan').disabled=true;$('cullApply').disabled=true;cullRows=[];$('cullReview').replaceChildren();$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;const previous=[];try{const receipt=await creditApi('rpc/autoedit_cull_charge',{method:'POST',body:JSON.stringify({p_operation_id:crypto.randomUUID(),p_photo_count:photos.length})});$('cullPricing').textContent='Charged: '+receipt.paid_count+' paid culls, '+receipt.free_count+' free · '+receipt.charged_credits+' credit(s) deducted.';await editorRefreshCredits().catch(()=>{});cullScanned=true;for(let i=0;i<photos.length;i++){const p=photos[i];let reason='Looks suitable',keep=true;try{const m=await cullMeasure(p);let near=null;for(const prev of previous){let diff=0;for(let j=0;j<64;j++)diff+=m.hash[j]!==prev.hash[j];if(diff<=4){near=prev;break}}if(near){reason='Possible near-duplicate of '+near.name;keep=false}else if(m.sharp<9){reason='Potential softness — review';keep=false}else if(m.brightness<35||m.brightness>228){reason='Potential exposure issue — review';keep=false}previous.push({hash:m.hash,name:p.file.name})}catch(e){reason='Could not analyse — kept for manual review'}cullRows.push({photo:p,keep,reason,rating:0});$('cullSummary').textContent='Analysing '+(i+1)+' / '+photos.length+' photos…';if(i%12===0)await new Promise(resolve=>setTimeout(resolve,0))}cullScanned=true;cullScanned=true;cullDraw();$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;cullSummary();cullRefreshPricing().catch(()=>{})}};
+async function cullMeasure(photo){
+ const img=new Image();img.src=photoUrl(photo);await img.decode();
+ // Analysis-only 192px preview: no edits, exports or original files are modified.
+ const size=192,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.fillStyle='#777';ctx.fillRect(0,0,size,size);
+ const scale=Math.min(size/img.naturalWidth,size/img.naturalHeight),w=img.naturalWidth*scale,h=img.naturalHeight*scale;
+ ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
+ const data=ctx.getImageData(0,0,size,size).data,gray=new Float32Array(size*size);
+ let sum=0,valid=0,clippedDark=0,clippedLight=0,contrastSum=0;
+ const x0=Math.max(0,Math.floor((size-w)/2)),x1=Math.min(size,Math.ceil((size+w)/2));
+ const y0=Math.max(0,Math.floor((size-h)/2)),y1=Math.min(size,Math.ceil((size+h)/2));
+ for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+  const k=y*size+x,p=k*4,v=.2126*data[p]+.7152*data[p+1]+.0722*data[p+2];gray[k]=v;sum+=v;valid++;
+  if(v<7)clippedDark++;if(v>248)clippedLight++;
+ }
+ let sharp=0,edges=0,centreSharp=0,centreEdges=0;
+ for(let y=y0+1;y<y1-1;y++)for(let x=x0+1;x<x1-1;x++){
+  const k=y*size+x,v=Math.abs(4*gray[k]-gray[k-1]-gray[k+1]-gray[k-size]-gray[k+size]);
+  sharp+=v;edges++;if(x>size*.25&&x<size*.75&&y>size*.25&&y<size*.75){centreSharp+=v;centreEdges++}
+ }
+ const blocks=[],blockSize=size/8;
+ for(let by=0;by<8;by++)for(let bx=0;bx<8;bx++){
+  let total=0,n=0;
+  for(let y=by*blockSize;y<(by+1)*blockSize;y++)for(let x=bx*blockSize;x<(bx+1)*blockSize;x++){total+=gray[y*size+x]||0;n++}
+  blocks.push(total/n);
+ }
+ const avg=blocks.reduce((a,b)=>a+b,0)/64;
+ const brightness=sum/Math.max(1,valid),dark=clippedDark/Math.max(1,valid),light=clippedLight/Math.max(1,valid);
+ const edgeScore=sharp/Math.max(1,edges),subjectScore=centreSharp/Math.max(1,centreEdges);
+ const exposurePenalty=Math.min(35,Math.max(0,dark-.08)*110+Math.max(0,light-.08)*110+Math.max(0,35-brightness)*.35+Math.max(0,brightness-225)*.35);
+ const score=Math.round(Math.max(0,Math.min(100,45+Math.min(38,edgeScore*1.8)+Math.min(17,subjectScore*.8)-exposurePenalty)));
+ return {sharp:edgeScore,centreSharp:subjectScore,brightness,dark,light,score,hash:blocks.map(v=>v>avg?1:0)};
+}
+function cullHashDistance(a,b){let d=0;for(let j=0;j<64;j++)if(a[j]!==b[j])d++;return d}
+function cullTechnicalReason(m){
+ const issues=[];
+ if(m.dark>.24)issues.push('deep shadow clipping');
+ if(m.light>.24)issues.push('bright highlight clipping');
+ if(m.brightness<34)issues.push('very dark exposure');
+ if(m.brightness>225)issues.push('very bright exposure');
+ if(m.sharp<8&&m.centreSharp<8)issues.push('possible softness');
+ return issues.length?'Review: '+issues.join(', '):'Looks technically suitable';
+}
+
+$('cullScan').onclick=async()=>{if(cullBusy||batchRunning||exportRunning||!photos.length||cullScanned)return;let quote;try{quote=await creditApi('rpc/autoedit_cull_quote',{method:'POST',body:JSON.stringify({p_photo_count:photos.length})})}catch(e){alert('Cannot verify culling allowance: '+e.message);return}if(quote.credits_to_debit_now>quote.wallet_credits){alert('Insufficient credits. This culling batch needs '+quote.credits_to_debit_now+' credit(s), but your balance is '+quote.wallet_credits+'.');return}if(!confirm('Cull '+photos.length+' photos? '+quote.free_count+' free, '+quote.paid_count+' paid at R0.10 each (R'+(quote.price_cents/100).toFixed(2)+'). '+quote.credits_to_debit_now+' credit(s) will be debited now. Charges apply once per submitted batch, including if analysis is interrupted.'))return;cullBusy=true;$('cullScan').disabled=true;$('cullApply').disabled=true;cullRows=[];$('cullReview').replaceChildren();$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;const previous=[];try{const receipt=await creditApi('rpc/autoedit_cull_charge',{method:'POST',body:JSON.stringify({p_operation_id:crypto.randomUUID(),p_photo_count:photos.length})});$('cullPricing').textContent='Charged: '+receipt.paid_count+' paid culls, '+receipt.free_count+' free · '+receipt.charged_credits+' credit(s) deducted.';await editorRefreshCredits().catch(()=>{});cullScanned=true;
+for(let i=0;i<photos.length;i++){
+ const p=photos[i];let reason='Manual review recommended',keep=true,score=null,group=null;
+ try{
+  const m=await cullMeasure(p);score=m.score;reason=cullTechnicalReason(m);
+  let nearest=null,distance=65;
+  for(const prev of previous){const d=cullHashDistance(m.hash,prev.hash);if(d<distance){nearest=prev;distance=d}}
+  if(nearest&&distance<=5){
+   group=nearest.group||nearest.name;reason='Similar to '+nearest.name+' · compare technical quality';
+   // A technical recommendation, not automatic deletion. Prefer higher quality when similar.
+   if(m.score+5<nearest.score)keep=false;
+   else if(m.score>nearest.score+5){nearest.row.keep=false;nearest.row.reason='Similar to '+p.file.name+' · lower technical score';}
+  }
+  const row={photo:p,keep,reason,rating:0,score,group};
+  cullRows.push(row);previous.push({hash:m.hash,name:p.file.name,score:m.score,group:group||p.file.name,row});
+ }catch(e){cullRows.push({photo:p,keep:true,reason:'Could not analyse — kept for manual review',rating:0,score:null,group:null})}
+ $('cullSummary').textContent='Analysing '+(i+1)+' / '+photos.length+' photos…';
+ if(i%6===0)await new Promise(resolve=>setTimeout(resolve,0));
+}
+cullDraw();$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;cullSummary();cullRefreshPricing().catch(()=>{})}};
 $('cullKeepAll').onclick=()=>{for(const r of cullRows)if(!r.keep){cullUndoStack.push({row:r,field:'keep',previous:false});r.keep=true}cullDraw()};
 $('cullApply').onclick=async()=>{if(cullBusy||batchRunning||exportRunning)return;const kept=cullRows.filter(r=>r.keep).map(r=>r.photo.file);if(!kept.length)return;const removed=photos.length-kept.length;if(!confirm('Proceed to edit '+kept.length+' selected photos? '+removed+' excluded photos remain untouched in your original folder.'))return;await loadFiles(kept);workspaceShow('editor');$('progress').textContent=kept.length+' keepers transferred directly from Smart Culling. Ready to edit; originals untouched.'};
 
