@@ -2,10 +2,11 @@
 import {recommend,filterRows,setSelection,undo,recalculate} from './culling-state.mjs';
 export function evidenceFromLegacy(row){
  const m=row.metrics,issues=row.defects||[];
- if(!m)return {analyzed:false};
+ const local=row.localEvidence;
+ if(!m&&!local?.analyzed)return {analyzed:false};
  // Legacy 192px measurements are not calibrated to support confident exclusions.
  // In particular, similarity is never proof of a duplicate.
- return {analyzed:true,quality:issues.length?'uncertain':'strong',severeDefect:false,defectConfidence:0,unique:false};
+ return {analyzed:true,quality:'uncertain',severeDefect:false,defectConfidence:0,unique:false,technicalReview:issues.length>0};
 }
 export function hydrateLegacy(rows,mode='balanced'){
  return rows.map((row,index)=>({...row,id:index,evidence:evidenceFromLegacy(row),recommendation:recommend(evidenceFromLegacy(row),mode),selected:!!row.keep,override:row.manualKeep?(row.keep?'include':'exclude'):null}));
