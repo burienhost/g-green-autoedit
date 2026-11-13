@@ -2,6 +2,7 @@ import {measureRGBA,reviewFallback} from './photo-quality-core.mjs';
 import {perceptualGrid} from './scene-candidates.mjs';
 import {regionSignature} from './moment-signals.mjs';
 import {facePresence} from './face-presence.mjs';
+import {subjectRegions} from './subject-regions.mjs';
 const MAX_SIDE=256;
 self.onmessage=async ({data})=>{
  if(!data||data.type!=='analyze-photo'||typeof data.jobId!=='string')return;
@@ -19,6 +20,7 @@ self.onmessage=async ({data})=>{
   evidence.grid=perceptualGrid(pixels,width,height);
   evidence.regions=regionSignature(pixels,width,height);
   evidence.faces=await facePresence(bitmap);
+  evidence.subjects=subjectRegions(pixels,width,height,evidence.faces);
   self.postMessage({type:'photo-result',jobId,index,evidence});
  }catch(e){self.postMessage({type:'photo-result',jobId,index,evidence:reviewFallback(String(e?.message||e))});}
  finally{bitmap?.close();}
