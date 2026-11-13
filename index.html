@@ -765,7 +765,9 @@ function cullV3ApplyRecommendations(){
  cullApplyState(cullBridge().hydrateLegacy(cullRows,$('cullV3Mode').value));
  // Measurements are advisory: no unvalidated confidence-based automatic exclusions.
  for(const row of cullRows)if(row.localEvidence?.analyzed){row.reason+=' · Local image signals recorded';}
- $('cullV3Stats').textContent=result.message+' '+result.duplicates+' photos in comparison groups. All originals and manual choices preserved; recalculation is free.';
+ // Preserve the candidate count when modes are recalculated without rescanning.
+ if(cullSimilarityCandidates.length)$('cullV3Stats').dataset.candidateCount=String(cullSimilarityCandidates.length);
+ $('cullV3Stats').textContent=result.message+' '+result.duplicates+' photos in comparison groups. All originals and manual choices preserved; recalculation is free.'+(cullSimilarityCandidates.length?' '+cullSimilarityCandidates.length+' visual similarity candidates available for manual comparison.':'');
  cullPage=0;cullDraw();
 }
 $('cullV3Apply').onclick=cullV3ApplyRecommendations;
