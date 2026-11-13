@@ -578,7 +578,7 @@ $('cullWalletRefresh').onclick=()=>cullRefreshPricing().catch(()=>{});
 function cullReset(){cullProtectedMoments.clear();cullBurstGroups=[];cullBurstCursor=0;cullBurstFocusIds=null;if($('cullBurstControls'))$('cullBurstControls').hidden=true;cullSimilarityCandidates=[];if($('cullCandidateOpen'))$('cullCandidateOpen').hidden=true;cullPage=0;$('cullV3Apply').disabled=true;$('cullV3Stats').textContent='Engine 3.0 · review recommendations before editing.';cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
 function cullSummary(){const keep=cullRows.filter(r=>r.keep).length;const review=cullRows.filter(r=>r.status==='review').length,exclude=cullRows.filter(r=>r.status==='exclude').length;$('cullSummary').textContent=keep+' selected for editing · '+(cullRows.length-keep)+' not selected · '+review+' need review · '+exclude+' recommended exclude. Originals untouched.';$('cullApply').disabled=!keep||cullBusy;$('cullUndo').disabled=!cullUndoStack.length}
 function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;const oldManual=row.manualKeep;if(field==='keep')row.manualKeep=true;cullUndoStack.push({row,field,previous,oldManual});if(cullUndoStack.length>100)cullUndoStack.shift();row[field]=value;$('cullUndo').disabled=false;cullDraw()}
-$('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else if(Number.isInteger(last.protectedId)){if(last.previousProtected)cullProtectedMoments.add(last.protectedId);else cullProtectedMoments.delete(last.protectedId);cullBurstControls()}else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
+$('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else if(Number.isInteger(last.protectedId)){if(last.previousProtected)cullProtectedMoments.add(last.protectedId);else cullProtectedMoments.delete(last.protectedId);cullV3ApplyRecommendations();cullBurstControls()}else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
 $('cullRatingFilter').onchange=()=>{cullPage=0;cullDraw()};
 function cullVisibleRows(){
  const filter=$('cullFilter').value;
@@ -781,9 +781,9 @@ function cullV3ApplyRecommendations(){
  if(!cullRows.length)return;
  const target=Math.max(0,parseInt($('cullV3Target').value,10)||0);
  const result=cullV3Recommend(cullRows,$('cullV3Mode').value,target);
- cullApplyState(cullBridge().hydrateLegacy(cullRows,$('cullV3Mode').value));
+ cullApplyState(cullBridge().hydrateLegacy(cullRows.map((row,index)=>({...row,protectedMoment:cullProtectedMoments.has(index)})),$('cullV3Mode').value));
  // Measurements are advisory: no unvalidated confidence-based automatic exclusions.
- for(const row of cullRows)if(row.localEvidence?.analyzed){row.reason+=' · Local image signals recorded';}
+ // Recommendation reason now directly explains the measured issue or moment safeguard.
  // Preserve the candidate count when modes are recalculated without rescanning.
  if(cullSimilarityCandidates.length)$('cullV3Stats').dataset.candidateCount=String(cullSimilarityCandidates.length);
  $('cullV3Stats').textContent=result.message+' '+result.duplicates+' photos in comparison groups. All originals and manual choices preserved; recalculation is free.'+(cullSimilarityCandidates.length?' '+cullSimilarityCandidates.length+' visual similarity candidates available for manual comparison.':'');
@@ -800,7 +800,7 @@ let cullBurstGroups=[];
 let cullBurstCursor=0;
 let cullBurstFocusIds=null;
 let cullProtectedMoments=new Set();
-function cullProtectMoment(row,value){const id=cullRows.indexOf(row);if(id<0)return;const previous=cullProtectedMoments.has(id);if(previous===value)return;cullUndoStack.push({protectedId:id,previousProtected:previous});if(cullUndoStack.length>100)cullUndoStack.shift();if(value)cullProtectedMoments.add(id);else cullProtectedMoments.delete(id);cullDraw();cullBurstControls()}
+function cullProtectMoment(row,value){const id=cullRows.indexOf(row);if(id<0)return;const previous=cullProtectedMoments.has(id);if(previous===value)return;cullUndoStack.push({protectedId:id,previousProtected:previous});if(cullUndoStack.length>100)cullUndoStack.shift();if(value)cullProtectedMoments.add(id);else cullProtectedMoments.delete(id);cullV3ApplyRecommendations();cullBurstControls()}
 
 function cullBurstFocusClear(){cullBurstFocusIds=null;cullPage=0;cullBurstControls();cullDraw()}
 function cullBurstControls(){
@@ -867,7 +867,10 @@ async function cullRefreshSimilarityCandidates(){
   cullSimilarityCandidates=result.pairs;
   const {buildBurstCandidates}=await import('./src/burst-candidates.mjs');
   const bursts=buildBurstCandidates(cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid,evidence:r.localEvidence})),{threshold:.035,window:12,maxGroups:300,maxMembers:60});
-  cullBurstGroups=bursts.groups;cullBurstCursor=0;cullBurstFocusIds=null;cullBurstControls();
+  cullBurstGroups=bursts.groups;cullBurstCursor=0;cullBurstFocusIds=null;
+  for(const row of cullRows)row.momentReview=null;
+  for(const group of cullBurstGroups)for(const id of group.members)if(cullRows[id])cullRows[id].momentReview='Possible burst: verify subjects, expressions and distinct moments';
+  cullV3ApplyRecommendations();cullBurstControls();
   cullCandidateControls();
   const info=cullBurstGroups.length+' possible burst groups and '+result.pairs.length+' possible visual matches identified for manual comparison'+(result.truncated?' (limit reached)':'')+'. No photographs excluded.';
   $('cullV3Stats').textContent+=' '+info;
