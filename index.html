@@ -934,8 +934,11 @@ $('cullScan').onclick=async()=>{if(cullBusy||batchRunning||exportRunning||!photo
 for(let i=0;i<photos.length;i++){
  const p=photos[i];let m=null,localEvidence=null;
  try{localEvidence=await cullLocalQuality(p)}catch(e){}
- try{m=await cullMeasure(p)}catch(e){}
- cullRows.push({photo:p,keep:true,reason:m?cullTechnicalReason(m):'Analysis unavailable · manual review',rating:0,score:null,group:null,metrics:m,localEvidence,manualKeep:false});
+ // The worker already decoded and measured this image. Avoid a second main-thread decode.
+ // Legacy measurements are a fallback only when browser-local worker analysis fails.
+ if(!localEvidence?.analyzed){try{m=await cullMeasure(p)}catch(e){}}
+ const localReason=localEvidence?.analyzed?'Local image signals ready · review subject and moment':'Analysis unavailable · manual review';
+ cullRows.push({photo:p,keep:true,reason:m?cullTechnicalReason(m):localReason,rating:0,score:null,group:null,metrics:m,localEvidence,manualKeep:false});
  $('cullSummary').textContent='Engine 3.0 analysing '+(i+1)+' / '+photos.length+' photos…';
  if(i%3===0)await new Promise(resolve=>setTimeout(resolve,0));
 }
