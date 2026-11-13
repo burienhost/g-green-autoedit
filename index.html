@@ -573,6 +573,8 @@ function cullApplyRecommendedShortlist(){
  }
  if(!changes.length){alert('Your editing selection already matches the available recommendations.');return;}
  const included=changes.filter(x=>x.selected).length,removed=changes.length-included;
+ const resultingSelected=cullRows.filter((row,i)=>row.manualKeep||cullProtectedMoments.has(i)?row.keep:row.status==='keep').length;
+ if(resultingSelected===0){alert('SNAPIC cannot apply this shortlist: every photo would be deselected. Keep your current selection and review the flagged images individually.');return;}
  if(!confirm('Apply SNAPIC preliminary shortlist?\n\n'+included+' photos selected for editing.\n'+removed+' Review/Exclude photos deselected (never deleted).\n\nProtected moments and manual choices remain unchanged. Undo is available. Recommendations require photographer verification.'))return;
  for(const change of changes){const row=cullRows[change.id];row.keep=change.selected;row.shortlistAuto=true;}
  cullUndoStack.push({shortlistChanges:changes});if(cullUndoStack.length>100)cullUndoStack.shift();
