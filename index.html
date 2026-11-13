@@ -660,10 +660,10 @@ for(let i=0;i<photos.length;i++){
   let nearest=null,distance=65;
   for(const prev of previous){const d=cullHashDistance(m.hash,prev.hash);if(d<distance){nearest=prev;distance=d}}
   if(nearest&&distance<=5){
-   group=nearest.group||nearest.name;reason='Similar to '+nearest.name+' · compare technical quality';
+   group=nearest.group||nearest.name;nearest.row.group=group;reason='Similar to '+nearest.name+' · compare technical quality';
    // A technical recommendation, not automatic deletion. Prefer higher quality when similar.
-   if(m.score+5<nearest.score)keep=false;
-   else if(m.score>nearest.score+5){nearest.row.keep=false;nearest.row.reason='Similar to '+p.file.name+' · lower technical score';}
+   if(m.score+5<nearest.score)reason+=' · lower technical score';
+   else if(m.score>nearest.score+5){nearest.row.reason='Similar to '+p.file.name+' · lower technical score';}
   }
   const row={photo:p,keep,reason,rating:0,score,group};
   cullRows.push(row);previous.push({hash:m.hash,name:p.file.name,score:m.score,group:group||p.file.name,row});
