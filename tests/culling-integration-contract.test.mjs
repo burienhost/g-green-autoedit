@@ -10,7 +10,7 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const page=readFileSync(resolve(root,'index.html'),'utf8');
 test('development page wires local worker into culling scan',()=>{
  assert.match(page,/new Worker\('\.\/src\/photo-quality-worker\.mjs'/);
- assert.match(page,/localEvidence=await cullLocalQuality\(p\)/);
+ assert.match(page,/Promise\.all\(batch\.map\(\(p,slot\)=>cullLocalQuality\(p,slot\)/);
  assert.match(page,/await cullRefreshSimilarityCandidates\(\)/);
 });
 test('candidate review has navigation and ranking integration',()=>{
