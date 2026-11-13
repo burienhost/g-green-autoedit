@@ -20,9 +20,17 @@ self.onmessage=async ({data})=>{
   const evidence=measureRGBA(pixels,width,height);
   evidence.grid=perceptualGrid(pixels,width,height);
   evidence.regions=regionSignature(pixels,width,height);
-  evidence.faces=await facePresence(bitmap);
-  evidence.subjects=subjectRegions(pixels,width,height,evidence.faces);
-  evidence.faceCropDetail=faceCropDetail(bitmap,evidence.faces);
+  // Optional subject analysis must never erase successfully measured image evidence.
+  // Native face detection is not consistently implemented across browser workers.
+  try{
+   evidence.faces=await facePresence(bitmap);
+  }catch(e){evidence.faces={available:false,reason:'Optional face analysis failed'};}
+  try{
+   evidence.subjects=subjectRegions(pixels,width,height,evidence.faces);
+  }catch(e){evidence.subjects={available:false,subjects:[],reason:'Subject exposure unavailable'};}
+  try{
+   evidence.faceCropDetail=faceCropDetail(bitmap,evidence.faces);
+  }catch(e){evidence.faceCropDetail={available:false,regions:[],reason:'Source crop analysis unavailable'};}
   self.postMessage({type:'photo-result',jobId,index,evidence});
  }catch(e){self.postMessage({type:'photo-result',jobId,index,evidence:reviewFallback(String(e?.message||e))});}
  finally{bitmap?.close();}
