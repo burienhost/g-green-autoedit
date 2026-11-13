@@ -698,8 +698,13 @@ function cullV3Quality(m){
  // Severe measurable defects cannot be offset by unrelated good measurements.
  if((m.sharp||0)<3&&(m.centreSharp||0)<3)score=Math.min(score,40);
  if((m.brightness||0)<35||(m.brightness||0)>225)score=Math.min(score,45);
- if((m.dark||0)>.45||(m.light||0)>.45)score=Math.min(score,45);
- else if((m.dark||0)>.20||(m.light||0)>.20)score=Math.min(score,70);
+ // Extreme whole-frame clipping remains a serious defect. For moderately dark
+ // scenes, require corroborating clipping in the central region before capping.
+ // This avoids rejecting black clothing or naturally dark backgrounds alone.
+ const darkCorroborated=(m.dark||0)>.20&&(m.centreDarkRatio==null||(m.centreDarkRatio>.12));
+ const lightCorroborated=(m.light||0)>.20&&(m.centreLightRatio==null||(m.centreLightRatio>.12));
+ if(((m.dark||0)>.45&&darkCorroborated)||((m.light||0)>.45&&lightCorroborated))score=Math.min(score,45);
+ else if(darkCorroborated||lightCorroborated)score=Math.min(score,70);
  // Strongly one-directional edges can indicate camera movement; flag for human review,
  // not automatic exclusion, because architecture and other subjects may be directional.
  if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)score=Math.min(score,74);
@@ -712,7 +717,7 @@ function cullV3Defects(m){
  if((m.sharp||0)<5&&(m.centreSharp||0)<5)issues.push('possible blur');
  if((m.brightness||0)<65||(m.brightness||0)>195)issues.push('poor exposure');
  if((m.light||0)>.15)issues.push('clipped highlights');
- if((m.dark||0)>.15)issues.push('crushed shadows');
+ if((m.dark||0)>.15&&(m.centreDarkRatio==null||m.centreDarkRatio>.12))issues.push('crushed shadows');
  if(((m.sharp||0)+(m.centreSharp||0))<12)issues.push('low detail');
  if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)issues.push('possible directional motion blur');
  return issues;
