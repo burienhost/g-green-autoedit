@@ -727,6 +727,18 @@ $('cullV3Mode').onchange=()=>{if(cullRows.length)cullV3ApplyRecommendations()};
 // Phase 03: worker-first local pixel analysis with bounded per-photo lifetime.
 // Legacy measurements remain the fallback when workers or OffscreenCanvas are unavailable.
 let cullQualityWorker=null,cullQualitySerial=0;
+let cullSimilarityCandidates=[];
+async function cullRefreshSimilarityCandidates(){
+ try{
+  const {candidatePairs}=await import('./src/scene-candidates.mjs');
+  const rows=cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid}));
+  const result=candidatePairs(rows,{threshold:.035,maxPairs:500,window:12});
+  cullSimilarityCandidates=result.pairs;
+  const info=result.pairs.length+' possible visual matches identified for manual comparison'+(result.truncated?' (limit reached)':'')+'. No photographs excluded.';
+  $('cullV3Stats').textContent+=' '+info;
+ }catch(e){console.warn('Visual candidate retrieval unavailable',e);cullSimilarityCandidates=[]}
+}
+
 async function cullLocalQuality(photo){
  if(typeof Worker==='undefined'||typeof OffscreenCanvas==='undefined')return null;
  if(!cullQualityWorker){try{cullQualityWorker=new Worker('./src/photo-quality-worker.mjs',{type:'module'})}catch(e){console.warn('Photo quality worker unavailable',e);return null}}
@@ -796,7 +808,7 @@ for(let i=0;i<photos.length;i++){
  $('cullSummary').textContent='Engine 3.0 analysing '+(i+1)+' / '+photos.length+' photos…';
  if(i%3===0)await new Promise(resolve=>setTimeout(resolve,0));
 }
-$('cullV3Apply').disabled=false;cullV3ApplyRecommendations();$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;cullSummary();cullRefreshPricing().catch(()=>{})}};
+$('cullV3Apply').disabled=false;cullV3ApplyRecommendations();await cullRefreshSimilarityCandidates();$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;cullSummary();cullRefreshPricing().catch(()=>{})}};
 $('cullKeepAll').onclick=()=>cullBulkSelection(cullRows,true);
 $('cullApply').onclick=async()=>{if(cullBusy||batchRunning||exportRunning)return;const kept=cullRows.filter(r=>r.keep).map(r=>r.photo.file);if(!kept.length)return;const removed=photos.length-kept.length;if(!confirm('Proceed to edit '+kept.length+' selected photos? '+removed+' excluded photos remain untouched in your original folder.'))return;await loadFiles(kept);workspaceShow('editor');$('progress').textContent=kept.length+' keepers transferred directly from Smart Culling. Ready to edit; originals untouched.'};
 
