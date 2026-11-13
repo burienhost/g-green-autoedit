@@ -594,7 +594,7 @@ function cullDraw(){
   check.onchange=()=>cullDecision(r,'keep',check.checked);
   label.append(check,caption);
   const rating=document.createElement('div');rating.className='cull-rating';rating.setAttribute('aria-label','Photo rating');
-  for(let stars=1;stars<=5;stars++){const star=document.createElement('button');star.type='button';star.textContent='★';star.className=stars<=Number(r.rating||0)?'selected':'';star.setAttribute('aria-label','Rate '+stars+' stars');star.onclick=()=>cullDecision(r,'rating',stars===r.rating?0:stars);rating.append(star)}
+  for(let stars=1;stars<=5;stars++){const star=document.createElement('span');star.textContent='★';star.className=stars<=Number(r.rating||0)?'selected':'';star.setAttribute('aria-label','System technical rating '+r.rating+' of 5');rating.append(star)}
   const compare=document.createElement('button');compare.type='button';compare.className='cull-compare';compare.textContent=cullCompareSelection.includes(r)?'Selected for comparison':'Compare';compare.onclick=()=>cullChooseCompare(r);
   if(Number.isFinite(r.score)){const score=document.createElement('span');score.className='cull-reason';score.textContent='Automated technical rating: '+r.score+'/100 · '+r.qualityBand;meta.append(score)}meta.append(name,badge,reason,label,rating,compare);row.append(img,meta);fragment.append(row);
  }
