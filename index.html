@@ -360,7 +360,7 @@ async function homeLoad(){
 
 function workspaceShow(id){
  const allowed=workspaceTabs.filter(t=>t.roles.includes(workspaceRole));
- if(!allowed.some(t=>t.id===id))id='editor';
+ if(!allowed.some(t=>t.id===id))id='home';
  workspaceActive=id;
  for(const t of workspaceTabs){const panel=document.getElementById('workspace-'+t.id);panel.hidden=t.id!==id}
  for(const button of document.querySelectorAll('#workspaceNav button')){const active=button.dataset.tab===id;button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1}
@@ -378,7 +378,7 @@ function workspaceRender(loggedIn,role,email){
  nav.setAttribute('role','tablist');
  document.getElementById('accountProfileEmail').textContent=email;
  document.getElementById('accountProfileRole').textContent=role==='admin'?'Administrator':'Customer';
- workspaceShow(workspaceTabs.some(t=>t.id===workspaceActive&&t.roles.includes(role))?workspaceActive:'editor');
+ workspaceShow(workspaceTabs.some(t=>t.id===workspaceActive&&t.roles.includes(role))?workspaceActive:'home');
 }
 workspacePrepare();
 
@@ -452,7 +452,7 @@ function cullDraw(){
 $('cullFilter').onchange=cullDraw;
 $('cullSelectVisible').onclick=()=>{for(const r of cullVisibleRows())r.keep=true;cullDraw()};
 $('cullRejectVisible').onclick=()=>{for(const r of cullVisibleRows())r.keep=false;cullDraw()};
-async function cullMeasure(photo){const img=new Image();img.src=photoUrl(photo);try{await img.decode();const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,64,64);const data=ctx.getImageData(0,0,64,64).data;const gray=new Float32Array(4096);let total=0,edges=0;for(let y=0;y<64;y++)for(let x=0;x<64;x++){const k=y*64+x,p=k*4;gray[k]=.299*data[p]+.587*data[p+1]+.114*data[p+2];total+=gray[k]}let sharp=0;for(let y=1;y<63;y++)for(let x=1;x<63;x++){const k=y*64+x;sharp+=Math.abs(4*gray[k]-gray[k-1]-gray[k+1]-gray[k-64]-gray[k+64]);edges++}const blocks=[];for(let y=0;y<8;y++)for(let x=0;x<8;x++){let v=0;for(let j=0;j<8;j++)for(let i=0;i<8;i++)v+=gray[(y*8+j)*64+x*8+i];blocks.push(v/64)}const avg=blocks.reduce((a,b)=>a+b,0)/64;return {sharp:sharp/edges,brightness:total/4096,hash:blocks.map(v=>v>avg?1:0)}}finally{releasePhoto(photo)}}
+async function cullMeasure(photo){const img=new Image();img.src=photoUrl(photo);try{await img.decode();const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0,64,64);const data=ctx.getImageData(0,0,64,64).data;const gray=new Float32Array(4096);let total=0,edges=0;for(let y=0;y<64;y++)for(let x=0;x<64;x++){const k=y*64+x,p=k*4;gray[k]=.299*data[p]+.587*data[p+1]+.114*data[p+2];total+=gray[k]}let sharp=0;for(let y=1;y<63;y++)for(let x=1;x<63;x++){const k=y*64+x;sharp+=Math.abs(4*gray[k]-gray[k-1]-gray[k+1]-gray[k-64]-gray[k+64]);edges++}const blocks=[];for(let y=0;y<8;y++)for(let x=0;x<8;x++){let v=0;for(let j=0;j<8;j++)for(let i=0;i<8;i++)v+=gray[(y*8+j)*64+x*8+i];blocks.push(v/64)}const avg=blocks.reduce((a,b)=>a+b,0)/64;return {sharp:sharp/edges,brightness:total/4096,hash:blocks.map(v=>v>avg?1:0)}}finally{/* Object URL remains valid for the culling contact sheet; loadFiles releases it. */}}
 $('cullScan').onclick=async()=>{if(cullBusy||batchRunning||exportRunning||!photos.length)return;cullBusy=true;$('cullScan').disabled=true;$('cullApply').disabled=true;cullRows=[];$('cullReview').replaceChildren();$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;const previous=[];try{for(let i=0;i<photos.length;i++){const p=photos[i];let reason='Looks suitable',keep=true;try{const m=await cullMeasure(p);let near=null;for(const prev of previous){let diff=0;for(let j=0;j<64;j++)diff+=m.hash[j]!==prev.hash[j];if(diff<=4){near=prev;break}}if(near){reason='Possible near-duplicate of '+near.name;keep=false}else if(m.sharp<9){reason='Potential softness — review';keep=false}else if(m.brightness<35||m.brightness>228){reason='Potential exposure issue — review';keep=false}previous.push({hash:m.hash,name:p.file.name})}catch(e){reason='Could not analyse — kept for manual review'}cullRows.push({photo:p,keep,reason});$('cullSummary').textContent='Analysing '+(i+1)+' / '+photos.length+' photos…';if(i%12===0)await new Promise(resolve=>setTimeout(resolve,0))}cullDraw();$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length;cullSummary()}};
 $('cullKeepAll').onclick=()=>{cullRows.forEach(r=>r.keep=true);cullDraw()};
 $('cullApply').onclick=async()=>{if(cullBusy||batchRunning||exportRunning)return;const kept=cullRows.filter(r=>r.keep).map(r=>r.photo.file);if(!kept.length)return;const removed=photos.length-kept.length;if(!confirm('Proceed to edit '+kept.length+' selected photos? '+removed+' excluded photos remain untouched in your original folder.'))return;await loadFiles(kept);$('cullSummary').textContent=kept.length+' keepers loaded into SNAPIC editor. Original photos were not deleted.'};
