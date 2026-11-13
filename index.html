@@ -757,11 +757,11 @@ $('cullScan').onclick=async()=>{if(cullBusy||batchRunning||exportRunning||!photo
 for(let i=0;i<photos.length;i++){
  const p=photos[i];let m=null;
  try{m=await cullMeasure(p)}catch(e){}
- cullRows.push({photo:p,keep:true,reason:m?cullTechnicalReason(m):'Analysis unavailable · manual review',rating:0,score:null,group:null,metrics:m,manualKeep:false});
+ cullRows.push({photo:p,keep:false,reason:m?cullTechnicalReason(m):'Analysis unavailable · manual review',rating:0,score:null,group:null,metrics:m,manualKeep:false});
  $('cullSummary').textContent='Checking technical quality '+(i+1)+' / '+photos.length+' photos…';
  if(i%3===0)await new Promise(resolve=>setTimeout(resolve,0));
 }
-cullV3ApplyRecommendations();$('cullSelectVisible').disabled=false;$('cullRejectVisible').disabled=false;$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;cullSummary();cullRefreshPricing().catch(()=>{})}};
+cullV3ApplyRecommendations();$('cullSelectVisible').disabled=false;$('cullRejectVisible').disabled=false;$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;if(cullRows.length&&cullRows.every(r=>r.status))cullDraw();else cullSummary();cullRefreshPricing().catch(()=>{})}};
 $('cullKeepAll').onclick=()=>cullBulkDecision(cullRows,true);
 $('cullApply').onclick=async()=>{if(cullBusy||batchRunning||exportRunning||!cullScanned||cullRows.length!==photos.length)return;const kept=cullRows.filter(r=>r.keep).map(r=>r.photo.file);if(!kept.length)return;const removed=photos.length-kept.length;if(!confirm('Proceed to edit '+kept.length+' approved photos? '+removed+' unselected photos will not enter the editing queue. Your original files remain untouched. No additional culling charge applies.'))return;await loadFiles(kept);workspaceShow('editor');$('progress').textContent=kept.length+' keepers transferred directly from Smart Culling. Ready to edit; originals untouched.'};
 
