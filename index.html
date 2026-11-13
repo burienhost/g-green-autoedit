@@ -560,6 +560,35 @@ import('./src/legacy-culling-adapter.mjs').then(m=>{snapicCullingBridge=m}).catc
 function cullBridge(){if(!snapicCullingBridge)throw Error('Recommendation module not ready; refresh before culling');return snapicCullingBridge}
 function cullApplyState(rows){for(let i=0;i<rows.length;i++){const r=cullRows[i],v=rows[i];r.keep=v.selected;r.manualKeep=v.override!==null;r.status=v.recommendation.status;r.reason=v.recommendation.reason;r.recommendation=v.recommendation;r.override=v.override;r.evidence=v.evidence;r.id=v.id}}
 function cullCurrentState(){return cullRows.map((r,i)=>({...r,id:i,selected:!!r.keep,override:r.manualKeep?(r.keep?'include':'exclude'):null,recommendation:r.recommendation||{status:r.status==='keeper'?'keep':'review',reason:r.reason||'Review',confidence:0}}))}
+// Explicit opt-in shortlist: preserve protected moments and photographer's manual choices.
+// Review photos are not discarded; they simply remain outside the editing selection.
+function cullApplyRecommendedShortlist(){
+ if(cullBusy||!cullRows.length)return;
+ const undecided=cullRows.filter((r,i)=>!r.manualKeep&&!cullProtectedMoments.has(i));
+ const toDeselect=undecided.filter(r=>r.status!=='keep'&&r.keep);
+ const toSelect=undecided.filter(r=>r.status==='keep'&&!r.keep);
+ if(!toDeselect.length&&!toSelect.length){alert('Your editing selection already matches the available recommendations.');return;}
+ const message='Apply SNAPIC preliminary shortlist?\\n\\n'+toSelect.length+' recommended Keep photos will be selected.\\n'+toDeselect.length+' Review/Exclude photos will be deselected from editing (NOT deleted).\\n\\nProtected moments and manual decisions stay unchanged. Undo restores the selection. Recommendations are unvalidated and require your review.';
+ if(!confirm(message))return;
+ const ids=[...toSelect.map(r=>cullRows.indexOf(r)),...toDeselect.map(r=>cullRows.indexOf(r))];
+ const state=cullCurrentState(),changes=[];
+ const next=state.map(row=>{
+  if(!ids.includes(row.id))return row;
+  const selected=row.recommendation.status==='keep';
+  changes.push({id:row.id,before:{selected:row.selected,override:row.override},after:{selected,override:selected?'include':'exclude'}});
+  return {...row,selected,override:selected?'include':'exclude'};
+ });
+ if(!changes.length)return;
+ cullUndoStack.push({transaction:changes});if(cullUndoStack.length>100)cullUndoStack.shift();
+ cullApplyState(next);cullPage=0;cullDraw();
+}
+function cullShortlistControl(){
+ if($('cullShortlist'))return;
+ const button=document.createElement('button');button.id='cullShortlist';button.type='button';button.textContent='Apply preliminary shortlist';button.title='Opt-in: select recommended Keep photos, deselect Review photos without deleting originals; reversible with Undo';
+ button.onclick=cullApplyRecommendedShortlist;
+ const anchor=$('cullKeepAll');anchor.parentNode.insertBefore(button,anchor.nextSibling);
+}
+cullShortlistControl();
 function cullBulkSelection(rows,selected){const state=cullCurrentState(),ids=rows.map(r=>cullRows.indexOf(r)).filter(id=>id>=0&&(selected||!cullProtectedMoments.has(id)));const result=cullBridge().legacyBulk(state,ids,selected);if(result.transaction.length){cullUndoStack.push({transaction:result.transaction});cullApplyState(result.rows)}cullDraw()}
 let cullQuoteRequest=0;
 async function cullRefreshPricing(){
