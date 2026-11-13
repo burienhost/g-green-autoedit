@@ -656,7 +656,7 @@ function notify(message){
 }
 $('mobileFolderFiles').onchange=async e=>{if(!e.target.files.length)return;pullHandle=null;await loadFiles(e.target.files);$('folderStatus').textContent='Pull: '+e.target.files.length+' files selected from device · Push: Downloads';e.target.value=''};
 $('pullFolder').onclick=async()=>{
- if(!('showDirectoryPicker' in window)){$('mobileFolderFiles').click();return}
+ if(!('showDirectoryPicker' in window)){if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){$('files').click()}else{$('mobileFolderFiles').click()}return}
  try{pullHandle=await window.showDirectoryPicker({mode:'read'});const files=[];
   for await(const [name,handle] of pullHandle.entries())if(handle.kind==='file'&&supportedExt.test(name))files.push(await handle.getFile());
   $('folderStatus').textContent='Pull: '+pullHandle.name+' ('+files.length+' photos) · Push: '+(pushHandle?.name||'browser downloads');
