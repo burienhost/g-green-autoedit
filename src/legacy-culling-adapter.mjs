@@ -18,7 +18,16 @@ export function evidenceFromLegacy(row){
  return {analyzed:true,quality:'uncertain',severeDefect:false,defectConfidence:0,unique:false,technicalReview:issues.length>0,reviewFlags:issues};
 }
 export function hydrateLegacy(rows,mode='balanced'){
- return rows.map((row,index)=>({...row,id:index,evidence:evidenceFromLegacy(row),recommendation:(()=>{const evidence=evidenceFromLegacy(row);const result=recommend(evidence,mode);return evidence.reviewFlags?.length?{...result,status:'review',reason:'Technical screen: '+evidence.reviewFlags.join(', '),confidence:0}:result})(),selected:!!row.keep,override:row.manualKeep?(row.keep?'include':'exclude'):null}));
+ return rows.map((row,index)=>{
+  const evidence=evidenceFromLegacy(row);
+  let recommendation=recommend(evidence,mode);
+  if(evidence.reviewFlags?.length)recommendation={status:'review',reason:'Technical screen: '+evidence.reviewFlags.join(', '),confidence:0};
+  // A technically clean photograph can still contain a different person, expression,
+  // or moment. Similarity groups require a human decision, not a silent keep verdict.
+  else if(row.group||row.momentReview)recommendation={status:'review',reason:row.momentReview||'Possible burst: compare subjects and moments',confidence:0};
+  if(row.protectedMoment)recommendation={status:'keep',reason:'Photographer-protected unique moment',confidence:1};
+  return {...row,id:index,evidence,recommendation,selected:!!row.keep,override:row.manualKeep?(row.keep?'include':'exclude'):null};
+ });
 }
 export function syncLegacy(source,view){
  if(source.length!==view.length)throw new Error('Culling row mismatch');
