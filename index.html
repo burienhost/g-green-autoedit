@@ -918,10 +918,10 @@ async function cullRefreshSimilarityCandidates(){
  try{
   const {candidatePairs}=await import('./src/scene-candidates.mjs');
   const rows=cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid}));
-  const result=candidatePairs(rows,{threshold:.035,maxPairs:500,window:12});
+  const result=candidatePairs(rows,{threshold:.085,maxPairs:1500,window:20});
   cullSimilarityCandidates=result.pairs;
   const {buildBurstCandidates}=await import('./src/burst-candidates.mjs');
-  const bursts=buildBurstCandidates(cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid,evidence:r.localEvidence})),{threshold:.035,window:12,maxGroups:300,maxMembers:60});
+  const bursts=buildBurstCandidates(cullRows.map((r,id)=>({id,grid:r.localEvidence?.grid,evidence:r.localEvidence})),{threshold:.065,window:20,maxGroups:300,maxMembers:60});
   cullBurstGroups=bursts.groups;cullBurstCursor=0;cullBurstFocusIds=null;
   for(const row of cullRows)row.momentReview=null;
   for(const group of cullBurstGroups)for(const id of group.members)if(cullRows[id])cullRows[id].momentReview='Possible burst: verify subjects, expressions and distinct moments';
