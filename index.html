@@ -560,7 +560,7 @@ import('./src/legacy-culling-adapter.mjs').then(m=>{snapicCullingBridge=m}).catc
 function cullBridge(){if(!snapicCullingBridge)throw Error('Recommendation module not ready; refresh before culling');return snapicCullingBridge}
 function cullApplyState(rows){for(let i=0;i<rows.length;i++){const r=cullRows[i],v=rows[i];r.keep=v.selected;r.manualKeep=v.override!==null;r.status=v.recommendation.status;r.reason=v.recommendation.reason;r.recommendation=v.recommendation;r.override=v.override;r.evidence=v.evidence;r.id=v.id}}
 function cullCurrentState(){return cullRows.map((r,i)=>({...r,id:i,selected:!!r.keep,override:r.manualKeep?(r.keep?'include':'exclude'):null,recommendation:r.recommendation||{status:r.status==='keeper'?'keep':'review',reason:r.reason||'Review',confidence:0}}))}
-function cullBulkSelection(rows,selected){const state=cullCurrentState(),ids=rows.map(r=>cullRows.indexOf(r));const result=cullBridge().legacyBulk(state,ids,selected);if(result.transaction.length){cullUndoStack.push({transaction:result.transaction});cullApplyState(result.rows)}cullDraw()}
+function cullBulkSelection(rows,selected){const state=cullCurrentState(),ids=rows.map(r=>cullRows.indexOf(r)).filter(id=>id>=0&&(selected||!cullProtectedMoments.has(id)));const result=cullBridge().legacyBulk(state,ids,selected);if(result.transaction.length){cullUndoStack.push({transaction:result.transaction});cullApplyState(result.rows)}cullDraw()}
 let cullQuoteRequest=0;
 async function cullRefreshPricing(){
  const request=++cullQuoteRequest;
@@ -575,10 +575,10 @@ async function cullRefreshPricing(){
  }catch(e){if(request===cullQuoteRequest)$('cullPricing').textContent='Could not load culling balance: '+e.message}
 }
 $('cullWalletRefresh').onclick=()=>cullRefreshPricing().catch(()=>{});
-function cullReset(){cullBurstGroups=[];cullBurstCursor=0;cullBurstFocusIds=null;if($('cullBurstControls'))$('cullBurstControls').hidden=true;cullSimilarityCandidates=[];if($('cullCandidateOpen'))$('cullCandidateOpen').hidden=true;cullPage=0;$('cullV3Apply').disabled=true;$('cullV3Stats').textContent='Engine 3.0 · review recommendations before editing.';cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
+function cullReset(){cullProtectedMoments.clear();cullBurstGroups=[];cullBurstCursor=0;cullBurstFocusIds=null;if($('cullBurstControls'))$('cullBurstControls').hidden=true;cullSimilarityCandidates=[];if($('cullCandidateOpen'))$('cullCandidateOpen').hidden=true;cullPage=0;$('cullV3Apply').disabled=true;$('cullV3Stats').textContent='Engine 3.0 · review recommendations before editing.';cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
 function cullSummary(){const keep=cullRows.filter(r=>r.keep).length;const review=cullRows.filter(r=>r.status==='review').length,exclude=cullRows.filter(r=>r.status==='exclude').length;$('cullSummary').textContent=keep+' selected for editing · '+(cullRows.length-keep)+' not selected · '+review+' need review · '+exclude+' recommended exclude. Originals untouched.';$('cullApply').disabled=!keep||cullBusy;$('cullUndo').disabled=!cullUndoStack.length}
 function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;const oldManual=row.manualKeep;if(field==='keep')row.manualKeep=true;cullUndoStack.push({row,field,previous,oldManual});if(cullUndoStack.length>100)cullUndoStack.shift();row[field]=value;$('cullUndo').disabled=false;cullDraw()}
-$('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
+$('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){if(last.transaction)cullApplyState(cullBridge().legacyUndo(cullCurrentState(),last.transaction));else if(Number.isInteger(last.protectedId)){if(last.previousProtected)cullProtectedMoments.add(last.protectedId);else cullProtectedMoments.delete(last.protectedId);cullBurstControls()}else{last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.oldManual}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
 $('cullRatingFilter').onchange=()=>{cullPage=0;cullDraw()};
 function cullVisibleRows(){
  const filter=$('cullFilter').value;
@@ -598,12 +598,13 @@ function cullDraw(){
   const label=document.createElement('label');label.className='cull-check';label.style.margin='0';
   const check=document.createElement('input');check.type='checkbox';check.checked=r.keep;check.setAttribute('aria-label','Keep '+r.photo.file.name);
   const caption=document.createElement('span');caption.textContent='Keep for editing';
+  const protect=document.createElement('button');protect.type='button';protect.className='cull-protect';protect.textContent=cullProtectedMoments.has(cullRows.indexOf(r))?'Protected moment ✓':'Protect moment';protect.title='Prevent burst-level deselection of this unique moment';protect.setAttribute('aria-pressed',String(cullProtectedMoments.has(cullRows.indexOf(r))));protect.onclick=()=>cullProtectMoment(r,!cullProtectedMoments.has(cullRows.indexOf(r)));
   check.onchange=()=>cullDecision(r,'keep',check.checked);
   label.append(check,caption);
   const rating=document.createElement('div');rating.className='cull-rating';rating.setAttribute('aria-label','Photo rating');
   for(let stars=1;stars<=5;stars++){const star=document.createElement('button');star.type='button';star.textContent='★';star.className=stars<=Number(r.rating||0)?'selected':'';star.setAttribute('aria-label','Rate '+stars+' stars');star.onclick=()=>cullDecision(r,'rating',stars===r.rating?0:stars);rating.append(star)}
   const compare=document.createElement('button');compare.type='button';compare.className='cull-compare';compare.textContent=cullCompareSelection.includes(r)?'Selected for comparison':'Compare';compare.onclick=()=>cullChooseCompare(r);
-  if(Number.isFinite(r.score)){const score=document.createElement('span');score.className='cull-reason';score.textContent='Technical indicators only · not a validated quality score';meta.append(score)}meta.append(name,badge,reason,label,rating,compare);row.append(img,meta);fragment.append(row);
+  if(Number.isFinite(r.score)){const score=document.createElement('span');score.className='cull-reason';score.textContent='Technical indicators only · not a validated quality score';meta.append(score)}meta.append(name,badge,reason,label,protect,rating,compare);row.append(img,meta);fragment.append(row);
  }
  host.append(fragment);
  const pager=$('cullPager');pager.replaceChildren();if(pages>1){const prev=document.createElement('button'),next=document.createElement('button'),label=document.createElement('span');prev.textContent='← Previous';next.textContent='Next →';prev.disabled=cullPage===0;next.disabled=cullPage>=pages-1;label.textContent='Page '+(cullPage+1)+' of '+pages+' · '+visible.length+' photographs';prev.onclick=()=>{cullPage--;cullDraw()};next.onclick=()=>{cullPage++;cullDraw()};pager.append(prev,label,next)}
@@ -798,6 +799,9 @@ let cullSimilarityCandidates=[];
 let cullBurstGroups=[];
 let cullBurstCursor=0;
 let cullBurstFocusIds=null;
+let cullProtectedMoments=new Set();
+function cullProtectMoment(row,value){const id=cullRows.indexOf(row);if(id<0)return;const previous=cullProtectedMoments.has(id);if(previous===value)return;cullUndoStack.push({protectedId:id,previousProtected:previous});if(cullUndoStack.length>100)cullUndoStack.shift();if(value)cullProtectedMoments.add(id);else cullProtectedMoments.delete(id);cullDraw();cullBurstControls()}
+
 function cullBurstFocusClear(){cullBurstFocusIds=null;cullPage=0;cullBurstControls();cullDraw()}
 function cullBurstControls(){
  let bar=$('cullBurstControls');
@@ -827,17 +831,17 @@ function cullBurstControls(){
   const exclude=document.createElement('button');exclude.type='button';exclude.textContent='Deselect entire burst';exclude.onclick=()=>{
    const g=cullBurstGroups[cullBurstCursor];if(!g)return;
    if(!confirm('Deselect all '+g.members.length+' photographs in this possible burst? This is your manual decision; originals will not be deleted and Undo is available.'))return;
-   cullBulkSelection(g.members.map(i=>cullRows[i]).filter(Boolean),false);
+   cullBulkSelection(g.members.filter(i=>!cullProtectedMoments.has(i)).map(i=>cullRows[i]).filter(Boolean),false);
   };
   const leader=document.createElement('button');leader.type='button';leader.id='cullBurstSelectLeader';leader.textContent='Keep technical leader only';leader.onclick=()=>{
    const g=cullBurstGroups[cullBurstCursor];
    if(!g||g.technicalLeader===null||!g.members.includes(g.technicalLeader))return;
    const winner=cullRows[g.technicalLeader];if(!winner)return;
-   if(!confirm('This will manually deselect '+(g.members.length-1)+' photographs in this possible burst, keeping '+winner.photo.file.name+' selected. Similar photos can contain different people or unique moments. Inspect them first. Undo is available and originals remain untouched. Continue?'))return;
+   if(!confirm('This will manually deselect '+g.members.filter(id=>id!==g.technicalLeader&&!cullProtectedMoments.has(id)).length+' unprotected photographs in this possible burst, keeping '+winner.photo.file.name+' and protected moments selected. Similar photos can contain different people or unique moments. Inspect them first. Undo is available and originals remain untouched. Continue?'))return;
    const state=cullCurrentState();
-   const others=g.members.filter(id=>id!==g.technicalLeader);
+   const others=g.members.filter(id=>id!==g.technicalLeader&&!cullProtectedMoments.has(id));
    const first=cullBridge().legacyBulk(state,others,false);
-   const second=cullBridge().legacyBulk(first.rows,[g.technicalLeader],true);
+   const second=cullBridge().legacyBulk(first.rows,[g.technicalLeader,...g.members.filter(id=>cullProtectedMoments.has(id))],true);
    const transaction=[...first.transaction,...second.transaction].filter(x=>x.before.selected!==x.after.selected||x.before.override!==x.after.override);
    if(transaction.length){cullUndoStack.push({transaction});if(cullUndoStack.length>100)cullUndoStack.shift();cullApplyState(second.rows)}
    cullDraw();cullBurstControls();
