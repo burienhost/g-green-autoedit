@@ -570,8 +570,8 @@ async function cullRefreshPricing(){
 $('cullWalletRefresh').onclick=()=>cullRefreshPricing().catch(()=>{});
 function cullReset(){cullPage=0;$('cullV3Apply').disabled=true;$('cullV3Stats').textContent='Engine 3.0 · review recommendations before editing.';cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
 function cullSummary(){const keep=cullRows.filter(r=>r.keep).length;$('cullSummary').textContent=keep+' selected to keep · '+(cullRows.length-keep)+' excluded from editing · '+cullRows.length+' reviewed. Nothing is deleted.';$('cullApply').disabled=!keep||cullBusy;$('cullUndo').disabled=!cullUndoStack.length}
-function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;const previousManualKeep=row.manualKeep;cullUndoStack.push({row,field,previous,previousManualKeep});if(cullUndoStack.length>100)cullUndoStack.shift();if(field==='keep')row.manualKeep=true;row[field]=value;$('cullUndo').disabled=false;cullDraw()}
-$('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){last.row[last.field]=last.previous;if(last.field==='keep')last.row.manualKeep=last.previousManualKeep;cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
+function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;const previousManualKeep=row.manualKeep;cullUndoStack.push({row,field,previous,previousManualKeep});if(field==='keep')row.manualKeep=true;row[field]=value;$('cullUndo').disabled=false;cullDraw()}
+$('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){for(const change of (Array.isArray(last)?last:[last])){change.row[change.field]=change.previous;if(change.field==='keep')change.row.manualKeep=change.previousManualKeep}cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
 $('cullRatingFilter').onchange=()=>{cullPage=0;cullDraw()};
 function cullVisibleRows(){
  const filter=$('cullFilter').value;
@@ -607,8 +607,9 @@ function cullDraw(){
  cullSummary();
 }
 $('cullFilter').onchange=()=>{cullPage=0;cullDraw()};
-$('cullSelectVisible').onclick=()=>{for(const r of cullVisibleRows())if(!r.keep){cullUndoStack.push({row:r,field:'keep',previous:false});r.keep=true}cullDraw();$('cullUndo').disabled=!cullUndoStack.length};
-$('cullRejectVisible').onclick=()=>{for(const r of cullVisibleRows())if(r.keep){cullUndoStack.push({row:r,field:'keep',previous:true});r.keep=false}cullDraw();$('cullUndo').disabled=!cullUndoStack.length};
+function cullBulkDecision(rows,keep){const changes=[];for(const row of rows){if(row.keep===keep)continue;changes.push({row,field:'keep',previous:row.keep,previousManualKeep:row.manualKeep});row.keep=keep;row.manualKeep=true}if(changes.length)cullUndoStack.push(changes);$('cullUndo').disabled=!cullUndoStack.length;cullDraw()}
+$('cullSelectVisible').onclick=()=>cullBulkDecision(cullVisibleRows(),true);
+$('cullRejectVisible').onclick=()=>cullBulkDecision(cullVisibleRows(),false);
 
 function cullChooseCompare(row){
  if(cullCompareSelection.includes(row)){cullCompareSelection=cullCompareSelection.filter(r=>r!==row);cullDraw();return}
@@ -769,7 +770,7 @@ for(let i=0;i<photos.length;i++){
  if(i%3===0)await new Promise(resolve=>setTimeout(resolve,0));
 }
 $('cullV3Apply').disabled=false;cullV3ApplyRecommendations();$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;cullSummary();cullRefreshPricing().catch(()=>{})}};
-$('cullKeepAll').onclick=()=>{for(const r of cullRows)if(!r.keep){cullUndoStack.push({row:r,field:'keep',previous:false,previousManualKeep:r.manualKeep});if(cullUndoStack.length>100)cullUndoStack.shift();r.keep=true;r.manualKeep=true} $('cullUndo').disabled=!cullUndoStack.length;cullDraw()};
+$('cullKeepAll').onclick=()=>cullBulkDecision(cullRows,true);
 $('cullApply').onclick=async()=>{if(cullBusy||batchRunning||exportRunning)return;const kept=cullRows.filter(r=>r.keep).map(r=>r.photo.file);if(!kept.length)return;const removed=photos.length-kept.length;if(!confirm('Proceed to edit '+kept.length+' selected photos? '+removed+' excluded photos remain untouched in your original folder.'))return;await loadFiles(kept);workspaceShow('editor');$('progress').textContent=kept.length+' keepers transferred directly from Smart Culling. Ready to edit; originals untouched.'};
 
 async function loadFiles(files){
