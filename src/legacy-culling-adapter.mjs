@@ -20,6 +20,14 @@ export function hydrateLegacy(rows,mode='balanced'){
   // A technically clean photograph can still contain a different person, expression,
   // or moment. Similarity groups require a human decision, not a silent keep verdict.
   else if(row.group||row.momentReview)recommendation={status:'review',reason:row.momentReview||'Possible burst: compare subjects and moments',confidence:0};
+  // A strong spatial texture imbalance is not a defect, but merits a photographer's
+  // focus-placement check when no actual face detector has localized the subject.
+  else if(row.localEvidence?.spatialDetail?.centerLowRelative&&!row.localEvidence?.faces?.available){
+   recommendation={status:'review',reason:'Focus placement check: central image region has much less fine detail than another region; subject position is unknown',confidence:0};
+  }
+  else if(evidence.creativeContext?.length&&recommendation.status==='keep'){
+   recommendation={...recommendation,reason:recommendation.reason+' · '+evidence.creativeContext.join('; ')};
+  }
   if(row.protectedMoment)recommendation={status:'keep',reason:'Photographer-protected unique moment',confidence:1};
   return {...row,id:index,evidence,recommendation,selected:!!row.keep,override:row.manualKeep?(row.keep?'include':'exclude'):null};
  });
