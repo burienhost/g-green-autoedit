@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {assessTechnicalQuality} from '../src/technical-quality.mjs';
+const base={analyzed:true,meanLuma:120,contrastStdDev:45,detailEnergy:1200,highlightClipFraction:.01,shadowClipFraction:.01};
+test('ordinary measurable frame is a preliminary keep',()=>{const r=assessTechnicalQuality(base);assert.equal(r.status,'keep');assert.equal(r.flags.length,0);assert.ok(r.score>0);});
+test('flat blurred frame receives strong review warning, never auto-exclude',()=>{const r=assessTechnicalQuality({...base,detailEnergy:0,contrastStdDev:2});assert.equal(r.status,'review');assert.equal(r.severity,'strong-warning');assert.equal(r.automaticExclusion,false);});
+test('severe clipped highlights prompt review',()=>{const r=assessTechnicalQuality({...base,meanLuma:253,highlightClipFraction:.95});assert.equal(r.status,'review');assert.match(r.flags.join(' '),/highlights/);});
+test('dark but detailed image is not automatically rejected',()=>{const r=assessTechnicalQuality({...base,meanLuma:30,detailEnergy:1800,contrastStdDev:50});assert.equal(r.status,'review');assert.equal(r.automaticExclusion,false);});
+test('missing evidence prompts review',()=>{const r=assessTechnicalQuality({analyzed:false});assert.equal(r.status,'review');assert.equal(r.score,null);});
+test('nonfinite measurements never result in Keep',()=>{const r=assessTechnicalQuality({...base,detailEnergy:NaN});assert.equal(r.status,'review');});
