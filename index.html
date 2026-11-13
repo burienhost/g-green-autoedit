@@ -567,7 +567,7 @@ async function cullRefreshPricing(){
  }catch(e){if(request===cullQuoteRequest)$('cullPricing').textContent='Could not load culling balance: '+e.message}
 }
 $('cullWalletRefresh').onclick=()=>cullRefreshPricing().catch(()=>{});
-function cullReset(){cullPage=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
+function cullReset(){cullPage=0;cullThumbQueue.length=0;cullThumbClear();$('cullPager').replaceChildren();$('cullRenderStatus').textContent='';if(!$('cullComparison').hidden)$('cullComparison').hidden=true;$('cullRatingFilter').value='0';$('cullUndo').disabled=true;cullScanned=false;cullUndoStack=[];cullCompareSelection=[];cullRows=[];$('cullFilter').value='all';$('cullSelectVisible').disabled=true;$('cullRejectVisible').disabled=true;$('cullReview').replaceChildren();$('cullScan').disabled=!photos.length||cullScanned;$('cullKeepAll').disabled=true;$('cullApply').disabled=true;$('cullSummary').textContent=photos.length?photos.length+' photos ready for optional culling.':'Choose photos to begin.';cullRefreshPricing().catch(()=>{})}
 function cullSummary(){const keep=cullRows.filter(r=>r.keep).length;$('cullSummary').textContent=keep+' selected to keep · '+(cullRows.length-keep)+' excluded from editing · '+cullRows.length+' reviewed. Nothing is deleted.';$('cullApply').disabled=!keep||cullBusy;$('cullUndo').disabled=!cullUndoStack.length}
 function cullDecision(row,field,value){const previous=row[field];if(previous===value)return;cullUndoStack.push({row,field,previous});if(cullUndoStack.length>100)cullUndoStack.shift();row[field]=value;$('cullUndo').disabled=false;cullDraw()}
 $('cullUndo').onclick=()=>{const last=cullUndoStack.pop();if(last){last.row[last.field]=last.previous;cullDraw()}$('cullUndo').disabled=!cullUndoStack.length};
@@ -631,8 +631,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('cullComparison'
 const cullThumbCache=new Map(),CULL_THUMB_LIMIT=90;
 function cullThumbClear(){for(const url of cullThumbCache.values())URL.revokeObjectURL(url);cullThumbCache.clear()}
 async function cullBitmap(file,maxSize){
- if(typeof createImageBitmap==='function')return await createImageBitmap(file,{resizeWidth:maxSize,resizeHeight:maxSize,resizeQuality:'medium'}).catch(()=>createImageBitmap(file));
- const url=URL.createObjectURL(file);try{const image=new Image();image.src=url;await image.decode();return image}finally{URL.revokeObjectURL(url)}
+ if(typeof createImageBitmap==='function')return await createImageBitmap(file,{resizeWidth:maxSize,resizeQuality:'medium'}).catch(()=>createImageBitmap(file));
+ const url=URL.createObjectURL(file);const image=new Image();image.src=url;try{await image.decode();return image}finally{URL.revokeObjectURL(url)}
 }
 async function cullThumbMake(photo){
  if(cullThumbCache.has(photo.file))return cullThumbCache.get(photo.file);
@@ -647,9 +647,11 @@ async function cullThumbMake(photo){
  return url;
  }finally{if(bitmap.close)bitmap.close()}
 }
-let cullThumbObserver=null;
+let cullThumbObserver=null,cullThumbActive=0;const cullThumbQueue=[];
+function cullThumbSchedule(img,photo){cullThumbQueue.push({img,photo});cullThumbPump()}
+function cullThumbPump(){while(cullThumbActive<2&&cullThumbQueue.length){const {img,photo}=cullThumbQueue.shift();if(!img.isConnected)continue;cullThumbActive++;cullThumbMake(photo).then(url=>{if(img.isConnected)img.src=url}).catch(()=>{img.alt='Preview unavailable'}).finally(()=>{cullThumbActive--;cullThumbPump()})}}
 function cullThumbObserve(img,photo){
- if(!cullThumbObserver)cullThumbObserver=new IntersectionObserver(entries=>{for(const e of entries){if(e.isIntersecting){cullThumbObserver.unobserve(e.target);const p=e.target._cullPhoto;cullThumbMake(p).then(url=>{if(e.target.isConnected)e.target.src=url}).catch(()=>{e.target.alt='Preview unavailable'})}}},{rootMargin:'180px'});
+ if(!cullThumbObserver)cullThumbObserver=new IntersectionObserver(entries=>{for(const e of entries){if(e.isIntersecting){cullThumbObserver.unobserve(e.target);const p=e.target._cullPhoto;cullThumbSchedule(e.target,p)}}},{rootMargin:'180px'});
  img._cullPhoto=photo;cullThumbObserver.observe(img);
 }
 
