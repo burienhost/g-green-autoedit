@@ -763,7 +763,7 @@ for(let i=0;i<photos.length;i++){
 }
 cullV3ApplyRecommendations();$('cullKeepAll').disabled=false}catch(e){$('cullSummary').textContent='Culling interrupted: '+e.message}finally{cullBusy=false;$('cullScan').disabled=!photos.length||cullScanned;cullSummary();cullRefreshPricing().catch(()=>{})}};
 $('cullKeepAll').onclick=()=>cullBulkDecision(cullRows,true);
-$('cullApply').onclick=async()=>{if(cullBusy||batchRunning||exportRunning)return;const kept=cullRows.filter(r=>r.keep).map(r=>r.photo.file);if(!kept.length)return;const removed=photos.length-kept.length;if(!confirm('Proceed to edit '+kept.length+' selected photos? '+removed+' excluded photos remain untouched in your original folder.'))return;await loadFiles(kept);workspaceShow('editor');$('progress').textContent=kept.length+' keepers transferred directly from Smart Culling. Ready to edit; originals untouched.'};
+$('cullApply').onclick=async()=>{if(cullBusy||batchRunning||exportRunning||!cullScanned||cullRows.length!==photos.length)return;const kept=cullRows.filter(r=>r.keep).map(r=>r.photo.file);if(!kept.length)return;const removed=photos.length-kept.length;if(!confirm('Proceed to edit '+kept.length+' approved photos? '+removed+' unselected photos will not enter the editing queue. Your original files remain untouched. No additional culling charge applies.'))return;await loadFiles(kept);workspaceShow('editor');$('progress').textContent=kept.length+' keepers transferred directly from Smart Culling. Ready to edit; originals untouched.'};
 
 async function loadFiles(files){
  photos.forEach(releasePhoto);photos=Array.from(files).filter(f=>supportedExt.test(f.name)).map(file=>({file,url:null}));
