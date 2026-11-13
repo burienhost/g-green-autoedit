@@ -618,6 +618,18 @@ $('cullSelectVisible').onclick=()=>cullBulkSelection(cullVisibleRows(),true);
 $('cullRejectVisible').onclick=()=>cullBulkSelection(cullVisibleRows(),false);
 
 let cullCandidateCursor=-1;
+let cullRankerPromise=null;
+function cullRankingModule(){return cullRankerPromise??=import('./src/photo-ranking.mjs').catch(e=>{cullRankerPromise=null;throw e})}
+function cullCandidateRanking(a,b,index){
+ const label=$('cullCandidateRanking');
+ if(!label)return;
+ label.textContent='Evaluating technical signals…';
+ cullRankingModule().then(({rankCandidatePair})=>{
+  if(cullCandidateCursor!==index||$('cullComparison').hidden)return;
+  const r=rankCandidatePair(a.localEvidence,b.localEvidence);
+  label.textContent=!r.ranked?'Technical ranking unavailable — compare manually.':r.preferred===null?'Technical signals inconclusive — compare expressions and moments manually.':'Technical preference: photo '+(r.preferred==='a'?'A':'B')+' ('+r.left.score+' vs '+r.right.score+'). Photographer must verify expressions and moments.';
+ }).catch(()=>{if(cullCandidateCursor===index)label.textContent='Ranking unavailable — compare manually.'});
+}
 function cullOpenCandidate(index){
  const pair=cullSimilarityCandidates[index];
  if(!pair)return;
@@ -631,6 +643,7 @@ function cullOpenCandidate(index){
  $('cullCompareNameA').textContent=a.photo.file.name+' · '+a.reason;
  $('cullCompareNameB').textContent=b.photo.file.name+' · '+b.reason;
  $('cullComparison').hidden=false;
+ cullCandidateRanking(a,b,index);
  cullDraw();
 }
 function cullCandidateControls(){
@@ -656,6 +669,11 @@ function cullChooseCompare(row){
 }
 function cullCompareClose(){ $('cullComparison').hidden=true;cullCompareSelection=[];cullCandidateCursor=-1;cullDraw() }
 $('cullCompareClose').onclick=cullCompareClose;
+const cullCandidateRankingLabel=document.createElement('p');
+cullCandidateRankingLabel.id='cullCandidateRanking';
+cullCandidateRankingLabel.style.color='#fff';
+cullCandidateRankingLabel.style.padding='8px';
+$('cullComparison').append(cullCandidateRankingLabel);
 const cullCandidateNext=document.createElement('button');
 cullCandidateNext.type='button';cullCandidateNext.id='cullCandidateNext';cullCandidateNext.textContent='Next possible match';
 cullCandidateNext.onclick=()=>{if(cullCandidateCursor>=0&&cullCandidateCursor+1<cullSimilarityCandidates.length)cullOpenCandidate(cullCandidateCursor+1)};
