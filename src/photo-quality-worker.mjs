@@ -5,6 +5,7 @@ import {facePresence} from './face-presence.mjs';
 import {subjectRegions} from './subject-regions.mjs';
 import {faceCropDetail} from './face-crop-detail.mjs';
 import {spatialDetail} from './spatial-detail.mjs';
+import {attentionCandidates} from './attention-candidates.mjs';
 const MAX_SIDE=256;
 self.onmessage=async ({data})=>{
  if(!data||data.type!=='analyze-photo'||typeof data.jobId!=='string')return;
@@ -22,6 +23,7 @@ self.onmessage=async ({data})=>{
   evidence.grid=perceptualGrid(pixels,width,height);
   evidence.regions=regionSignature(pixels,width,height);
   evidence.spatialDetail=spatialDetail(pixels,width,height);
+  evidence.attention=attentionCandidates(evidence.regions,evidence.spatialDetail);
   // Optional subject analysis must never erase successfully measured image evidence.
   // Native face detection is not consistently implemented across browser workers.
   try{
