@@ -695,6 +695,9 @@ function cullV3Quality(m){
  if((m.brightness||0)<35||(m.brightness||0)>225)score=Math.min(score,45);
  if((m.dark||0)>.45||(m.light||0)>.45)score=Math.min(score,45);
  else if((m.dark||0)>.20||(m.light||0)>.20)score=Math.min(score,70);
+ // Strongly one-directional edges can indicate camera movement; flag for human review,
+ // not automatic exclusion, because architecture and other subjects may be directional.
+ if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)score=Math.min(score,74);
  return score;
 }
 function cullV3Band(m){if(!m)return 'Review';const score=cullV3Quality(m);return score>=75?'Keep':score>=50?'Review':'Exclude'}
@@ -706,6 +709,7 @@ function cullV3Defects(m){
  if((m.light||0)>.15)issues.push('clipped highlights');
  if((m.dark||0)>.15)issues.push('crushed shadows');
  if(((m.sharp||0)+(m.centreSharp||0))<12)issues.push('low detail');
+ if(m.directionalBalance!=null&&m.directionalBalance<.24&&(m.gradientStrength||0)>12)issues.push('possible directional motion blur');
  return issues;
 }
 function cullV3ApplyRecommendations(){
@@ -718,10 +722,10 @@ $('cullV3Apply').onclick=cullV3ApplyRecommendations;
 
 
 async function cullMeasure(photo){
- const img=await cullBitmap(photo.file,192);
+ const img=await cullBitmap(photo.file,384);
  try{
- // Analysis-only 192px preview: no edits, exports or original files are modified.
- const size=192,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
+ // Analysis-only 384px preview preserves more focus detail; originals are never modified.
+ const size=384,canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
  const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.fillStyle='#777';ctx.fillRect(0,0,size,size);
  const iw=img.width||img.naturalWidth,ih=img.height||img.naturalHeight;const scale=Math.min(size/iw,size/ih),w=iw*scale,h=ih*scale;
  ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
@@ -733,14 +737,14 @@ async function cullMeasure(photo){
   const k=y*size+x,p=k*4,v=.2126*data[p]+.7152*data[p+1]+.0722*data[p+2];gray[k]=v;sum+=v;valid++;
   if(v<7)clippedDark++;if(v>248)clippedLight++;
  }
- let sharp=0,edges=0,centreSharp=0,centreEdges=0;
+ let sharp=0,edges=0,centreSharp=0,centreEdges=0,gradientX=0,gradientY=0;
  for(let y=y0+1;y<y1-1;y++)for(let x=x0+1;x<x1-1;x++){
   const k=y*size+x,v=Math.abs(4*gray[k]-gray[k-1]-gray[k+1]-gray[k-size]-gray[k+size]);
-  sharp+=v;edges++;if(x>size*.25&&x<size*.75&&y>size*.25&&y<size*.75){centreSharp+=v;centreEdges++}
+  sharp+=v;edges++;gradientX+=Math.abs(gray[k+1]-gray[k-1]);gradientY+=Math.abs(gray[k+size]-gray[k-size]);if(x>size*.25&&x<size*.75&&y>size*.25&&y<size*.75){centreSharp+=v;centreEdges++}
  }
  const brightness=sum/Math.max(1,valid),dark=clippedDark/Math.max(1,valid),light=clippedLight/Math.max(1,valid);
  const edgeScore=sharp/Math.max(1,edges),subjectScore=centreSharp/Math.max(1,centreEdges);
- return {sharp:edgeScore,centreSharp:subjectScore,brightness,dark,light};
+ return {sharp:edgeScore,centreSharp:subjectScore,brightness,dark,light,directionalBalance:Math.min(gradientX,gradientY)/Math.max(1,Math.max(gradientX,gradientY)),gradientStrength:(gradientX+gradientY)/Math.max(1,edges)};
  }finally{if(img.close)img.close()}
 }
 function cullTechnicalReason(m){
