@@ -685,9 +685,14 @@ function cullV3Quality(m){
  if(!m)return 0;
  const clamp=(v)=>Math.max(0,Math.min(1,v));
  const sharp=clamp(((m.sharp||0)*.6+(m.centreSharp||0)*.4-2)/14);
- const exposure=clamp(1-Math.abs((m.brightness||0)-128)/128);
- const highlights=clamp(1-(m.light||0)/.25);
- const shadows=clamp(1-(m.dark||0)/.25);
+ // Combine whole-frame exposure with central subject exposure to avoid treating
+ // naturally dark backgrounds as equally important as the photographed subject.
+ const tonalBrightness=m.centreBrightness==null?(m.brightness||0):(.55*m.brightness+.45*m.centreBrightness);
+ const exposure=clamp(1-Math.abs(tonalBrightness-128)/128);
+ const highlightClipping=m.centreLightRatio==null?m.light:(.65*m.light+.35*m.centreLightRatio);
+ const shadowClipping=m.centreDarkRatio==null?m.dark:(.65*m.dark+.35*m.centreDarkRatio);
+ const highlights=clamp(1-highlightClipping/.25);
+ const shadows=clamp(1-shadowClipping/.25);
  const detail=clamp(((m.sharp||0)+(m.centreSharp||0))/24);
  let score=Math.round(100*(.4*sharp+.2*exposure+.15*highlights+.15*shadows+.1*detail));
  // Severe measurable defects cannot be offset by unrelated good measurements.
@@ -730,12 +735,13 @@ async function cullMeasure(photo){
  const iw=img.width||img.naturalWidth,ih=img.height||img.naturalHeight;const scale=Math.min(size/iw,size/ih),w=iw*scale,h=ih*scale;
  ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
  const data=ctx.getImageData(0,0,size,size).data,gray=new Float32Array(size*size);
- let sum=0,valid=0,clippedDark=0,clippedLight=0,contrastSum=0;
+ let sum=0,valid=0,clippedDark=0,clippedLight=0,centreSum=0,centreValid=0,centreDark=0,centreLight=0;
  const x0=Math.max(0,Math.floor((size-w)/2)),x1=Math.min(size,Math.ceil((size+w)/2));
  const y0=Math.max(0,Math.floor((size-h)/2)),y1=Math.min(size,Math.ceil((size+h)/2));
  for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
   const k=y*size+x,p=k*4,v=.2126*data[p]+.7152*data[p+1]+.0722*data[p+2];gray[k]=v;sum+=v;valid++;
   if(v<7)clippedDark++;if(v>248)clippedLight++;
+  if(x>size*.25&&x<size*.75&&y>size*.25&&y<size*.75){centreSum+=v;centreValid++;if(v<7)centreDark++;if(v>248)centreLight++;}
  }
  let sharp=0,edges=0,centreSharp=0,centreEdges=0,gradientX=0,gradientY=0;
  for(let y=y0+1;y<y1-1;y++)for(let x=x0+1;x<x1-1;x++){
@@ -744,7 +750,8 @@ async function cullMeasure(photo){
  }
  const brightness=sum/Math.max(1,valid),dark=clippedDark/Math.max(1,valid),light=clippedLight/Math.max(1,valid);
  const edgeScore=sharp/Math.max(1,edges),subjectScore=centreSharp/Math.max(1,centreEdges);
- return {sharp:edgeScore,centreSharp:subjectScore,brightness,dark,light,directionalBalance:Math.min(gradientX,gradientY)/Math.max(1,Math.max(gradientX,gradientY)),gradientStrength:(gradientX+gradientY)/Math.max(1,edges)};
+ const centreBrightness=centreSum/Math.max(1,centreValid),centreDarkRatio=centreDark/Math.max(1,centreValid),centreLightRatio=centreLight/Math.max(1,centreValid);
+ return {sharp:edgeScore,centreSharp:subjectScore,brightness,dark,light,centreBrightness,centreDarkRatio,centreLightRatio,directionalBalance:Math.min(gradientX,gradientY)/Math.max(1,Math.max(gradientX,gradientY)),gradientStrength:(gradientX+gradientY)/Math.max(1,edges)};
  }finally{if(img.close)img.close()}
 }
 function cullTechnicalReason(m){
