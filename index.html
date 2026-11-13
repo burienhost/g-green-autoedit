@@ -693,7 +693,8 @@ function cullV3Quality(m){
  // Severe measurable defects cannot be offset by unrelated good measurements.
  if((m.sharp||0)<3&&(m.centreSharp||0)<3)score=Math.min(score,40);
  if((m.brightness||0)<35||(m.brightness||0)>225)score=Math.min(score,45);
- if((m.dark||0)>.55||(m.light||0)>.55)score=Math.min(score,45);
+ if((m.dark||0)>.45||(m.light||0)>.45)score=Math.min(score,45);
+ else if((m.dark||0)>.20||(m.light||0)>.20)score=Math.min(score,70);
  return score;
 }
 function cullV3Band(m){if(!m)return 'Review';const score=cullV3Quality(m);return score>=75?'Keep':score>=50?'Review':'Exclude'}
