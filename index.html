@@ -631,7 +631,14 @@ function cullDraw(){
   const img=document.createElement('img');img.alt='Preview of '+r.photo.file.name;img.loading='lazy';img.dataset.cullThumb='1';cullThumbObserve(img,r.photo);
   const meta=document.createElement('div');meta.className='cull-meta';
   const name=document.createElement('span');name.className='cull-filename';name.title=r.photo.file.name;name.textContent=r.photo.file.name;
-  const reason=document.createElement('span');reason.className='cull-reason';reason.textContent=r.reason;
+  const reason=document.createElement('span');reason.className='cull-reason';
+  const fullReason=r.reason||'No analysis explanation available';
+  const shortReason=r.status==='review'?(r.momentReview?'Similar moment — compare before deciding':'Photographer review recommended'):r.status==='exclude'?'Potential issue — review before excluding':r.protectedMoment?'Protected unique moment':'Preliminary technical pass';
+  reason.textContent=shortReason;
+  const details=document.createElement('details');details.className='cull-evidence-details';details.style.margin='6px 0';details.style.fontSize='11px';
+  const detailsLabel=document.createElement('summary');detailsLabel.textContent='Analysis details';detailsLabel.style.cursor='pointer';
+  const detailsText=document.createElement('div');detailsText.textContent=fullReason;detailsText.style.marginTop='6px';detailsText.style.overflowWrap='anywhere';
+  details.append(detailsLabel,detailsText);
   const badge=document.createElement('span');badge.className='cull-badge';badge.textContent=r.status==='exclude'?'RECOMMENDED EXCLUDE':r.status==='review'?'NEEDS REVIEW':r.status==='keep'?'RECOMMENDED KEEP':'UNASSESSED';
   const label=document.createElement('label');label.className='cull-check';label.style.margin='0';
   const check=document.createElement('input');check.type='checkbox';check.checked=r.keep;check.setAttribute('aria-label','Keep '+r.photo.file.name);
@@ -642,7 +649,7 @@ function cullDraw(){
   const rating=document.createElement('div');rating.className='cull-rating';rating.setAttribute('aria-label','Photo rating');
   for(let stars=1;stars<=5;stars++){const star=document.createElement('button');star.type='button';star.textContent='★';star.className=stars<=Number(r.rating||0)?'selected':'';star.setAttribute('aria-label','Rate '+stars+' stars');star.onclick=()=>cullDecision(r,'rating',stars===r.rating?0:stars);rating.append(star)}
   const compare=document.createElement('button');compare.type='button';compare.className='cull-compare';compare.textContent=cullCompareSelection.includes(r)?'Selected for comparison':'Compare';compare.onclick=()=>cullChooseCompare(r);
-  if(Number.isFinite(r.score)){const score=document.createElement('span');score.className='cull-reason';score.textContent='Technical indicators only · not a validated quality score';meta.append(score)}meta.append(name,badge,reason,label,protect,rating,compare);row.append(img,meta);fragment.append(row);
+  if(Number.isFinite(r.score)){const score=document.createElement('span');score.className='cull-reason';score.textContent='Technical indicators only · not a validated quality score';meta.append(score)}meta.append(name,badge,reason,details,label,protect,rating,compare);row.append(img,meta);fragment.append(row);
  }
  host.append(fragment);
  const pager=$('cullPager');pager.replaceChildren();if(pages>1){const prev=document.createElement('button'),next=document.createElement('button'),label=document.createElement('span');prev.textContent='← Previous';next.textContent='Next →';prev.disabled=cullPage===0;next.disabled=cullPage>=pages-1;label.textContent='Page '+(cullPage+1)+' of '+pages+' · '+visible.length+' photographs';prev.onclick=()=>{cullPage--;cullDraw()};next.onclick=()=>{cullPage++;cullDraw()};pager.append(prev,label,next)}
