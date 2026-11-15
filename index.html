@@ -1722,14 +1722,57 @@ function notify(message){
  if(!$('notifyEmail').checked)return;
  if('Notification' in window&&Notification.permission==='granted'){try{new Notification('SNAPIC',{body:message})}catch(e){}}
 }
-$('mobileFolderFiles').onchange=async e=>{if(!e.target.files.length)return;pullHandle=null;await loadFiles(e.target.files);$('folderStatus').textContent='Pull: '+e.target.files.length+' files selected from device · Push: Downloads';e.target.value=''};
+// Pull always imports supported photographs into the shared culling/editing queue.
+let pullLoading=false;
+async function pullImport(files,label){
+ const list=Array.from(files||[]).filter(f=>supportedExt.test(f.name));
+ if(!list.length){$('folderStatus').textContent='Pull: no supported photos found in '+label+'. Choose a folder containing JPG, PNG, WebP, BMP or GIF photographs.';return}
+ if(batchRunning||cullBusy||exportRunning){$('folderStatus').textContent='Finish or stop the current job before changing Pull photos.';return}
+ pullLoading=true;
+ $('pullFolder').disabled=true;
+ $('folderStatus').textContent='Pull: loading '+list.length+' photographs from '+label+'…';
+ try{
+  await loadFiles(list);
+  $('folderStatus').textContent='Pull: '+label+' — '+photos.length+' photographs loaded · Push: '+(pushHandle?.name||'browser Downloads')+'. Ready to cull or edit.';
+  $('editorQueueCount').textContent=photos.length+' photographs ready for culling or editing.';
+  snapicActionHighlight();
+ }catch(e){
+  console.error('SNAPIC Pull failed',e);
+  $('folderStatus').textContent='Pull failed: '+e.message;
+ }finally{pullLoading=false;$('pullFolder').disabled=false}
+}
+$('mobileFolderFiles').onchange=async e=>{
+ const files=Array.from(e.target.files||[]);
+ e.target.value='';
+ if(files.length){pullHandle=null;await pullImport(files,'selected device folder')}
+};
 $('pullFolder').onclick=async()=>{
- if(!('showDirectoryPicker' in window)){if(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)){$('files').click()}else{$('mobileFolderFiles').click()}return}
- try{pullHandle=await window.showDirectoryPicker({mode:'read'});const files=[];
-  for await(const [name,handle] of pullHandle.entries())if(handle.kind==='file'&&supportedExt.test(name))files.push(await handle.getFile());
-  $('folderStatus').textContent='Pull: '+pullHandle.name+' ('+files.length+' photos) · Push: '+(pushHandle?.name||'browser downloads');
-  await loadFiles(files);
- }catch(e){if(e.name!=='AbortError')alert('Pull folder unavailable: '+e.message)}
+ if(pullLoading)return;
+ if(!('showDirectoryPicker' in window)){
+  $('folderStatus').textContent='Choose a photo folder. Your browser will grant access to its photographs.';
+  $('mobileFolderFiles').click();
+  return;
+ }
+ try{
+  const handle=await window.showDirectoryPicker({mode:'read'});
+  $('folderStatus').textContent='Pull: scanning '+handle.name+'…';
+  const files=[];
+  async function collect(folder){
+   for await(const [name,entry] of folder.entries()){
+    if(entry.kind==='file'&&supportedExt.test(name))files.push(await entry.getFile());
+    else if(entry.kind==='directory')await collect(entry);
+   }
+  }
+  await collect(handle);
+  if(!files.length){$('folderStatus').textContent='Pull: no supported photos found in '+handle.name+'.';return}
+  pullHandle=handle;
+  await pullImport(files,handle.name);
+ }catch(e){
+  if(e.name==='AbortError'){$('folderStatus').textContent='Pull cancelled; existing photos remain in the queue.';return}
+  console.warn('Folder picker failed',e);
+  $('folderStatus').textContent='Direct folder access unavailable. Select a folder using the browser file picker instead.';
+  $('mobileFolderFiles').click();
+ }
 };
 $('pushFolder').onclick=async()=>{
  if(!('showDirectoryPicker' in window)){pushHandle=null;$('folderStatus').textContent='Push: phone Downloads. Use your Files app to move exported JPGs into another folder.';alert('This mobile browser cannot write directly to a phone folder. Exports will use Downloads; move them with your phone Files app.');return}
