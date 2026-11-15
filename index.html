@@ -1835,14 +1835,16 @@ $('pushFolder').onclick=async()=>{
  try{
   // Do not call requestPermission during folder selection. On Edge, this may
   // throw SecurityError after the picker resolves and discard a valid handle.
-  const handle=await window.showDirectoryPicker({id:'snapic-push',mode:'readwrite'});
+  // Select the directory without demanding write permission inside the picker.
+  // Edge may reject readwrite picker requests as AbortError even after selection.
+  const handle=await window.showDirectoryPicker({id:'snapic-push',mode:'read'});
   if(!handle||handle.kind!=='directory'||typeof handle.getFileHandle!=='function')throw Error('The browser did not provide a writable directory handle.');
   pushHandle=handle;
   pushDownloadsExplicit=false;
   snapicFolderIndicator('pushFolder',true,'Push selected: '+handle.name);
-  snapicConfirm('Push folder selected',handle.name+' is selected. SNAPIC will verify write access before exporting.');
+  snapicConfirm('Push folder selected',handle.name+' is selected. SNAPIC will request write permission before exporting.');
  }catch(e){
-  if(e.name==='AbortError'){snapicConfirm('Push cancelled','No destination change was made.');return}
+  if(e.name==='AbortError'){snapicConfirm('Push not selected','The browser did not return a destination folder. If you selected one, try a normal local folder rather than a protected system folder.');return}
   console.error('[SNAPIC Push picker]',e?.name,e?.message,e);
   snapicConfirm('Push selection failed',(e?.name||'Error')+': '+(e?.message||'Unknown browser error'));
  }
