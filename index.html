@@ -1827,49 +1827,14 @@ function snapicFolderIndicator(id,success,detail){
  if(!success&&check)check.remove();
 }
 $('pushDownloads').onclick=snapicSelectDownloads;
-// Alternate direct directory selection: drag a folder from Explorer onto Push.
-// Chromium exposes a writable directory handle through the dropped item.
-const snapicPushButton=$('pushFolder');
-function snapicAcceptPushHandle(handle){
- if(!handle||handle.kind!=='directory'||typeof handle.getFileHandle!=='function')throw Error('Select a folder, not a file.');
- pushHandle=handle;pushDownloadsExplicit=false;
- snapicFolderIndicator('pushFolder',true,'Push selected: '+handle.name);
- snapicConfirm('Push folder selected',handle.name+' will receive completed photographs.');
-}
-snapicPushButton.title='Choose a destination, or drag a folder here from File Explorer';
-snapicPushButton.addEventListener('dragover',event=>{if(event.dataTransfer?.types?.includes('Files')){event.preventDefault();event.dataTransfer.dropEffect='copy'}});
-snapicPushButton.addEventListener('drop',async event=>{
- event.preventDefault();event.stopPropagation();
- try{
-  const item=Array.from(event.dataTransfer?.items||[]).find(i=>i.kind==='file');
-  if(!item||typeof item.getAsFileSystemHandle!=='function')throw Error('This browser does not support folder drag-and-drop access.');
-  // Call during the drop event before awaiting anything else.
-  const pending=item.getAsFileSystemHandle();
-  const handle=await pending;
-  snapicAcceptPushHandle(handle);
- }catch(error){console.warn('[SNAPIC Push drop]',error);snapicConfirm('Folder not selected',error.message+' Downloads remains available.');}
-});
-
 $('pushFolder').onclick=async()=>{
- // Use the original working desktop flow: request a writable directory directly
- // from the click gesture. Downloads remains the default until a handle exists.
- if(typeof window.showDirectoryPicker!=='function'){
-  snapicConfirm('Custom folder unavailable','This browser cannot save directly to a chosen folder. Downloads remains available.');
-  return;
- }
- try{
-  const handle=await window.showDirectoryPicker({mode:'readwrite'});
-  if(!handle||handle.kind!=='directory'||typeof handle.getFileHandle!=='function')throw Error('No usable folder handle was returned.');
-  snapicAcceptPushHandle(handle);
- }catch(e){
-  // A cancelled picker must not discard an existing valid destination.
-  console.warn('[SNAPIC Push selection]',e?.name,e?.message,e);
-  if(e?.name==='AbortError'){
-   snapicConfirm('Folder unchanged','No new custom destination was granted. '+(snapicPushReady()?'Your previous folder is still selected.':'Downloads remains the default.'));
-  }else{
-   snapicConfirm('Folder selection failed',(e?.name||'Error')+': '+(e?.message||'Unknown error'));
-  }
- }
+ if(typeof window.showDirectoryPicker!=='function'){snapicConfirm('Custom folder unavailable','Downloads remains the default on this browser.');return}
+ try{const selected=await window.showDirectoryPicker({mode:'readwrite'});
+  if(!selected||selected.kind!=='directory')throw Error('No directory selected');
+  pushHandle=selected;pushDownloadsExplicit=false;
+  snapicFolderIndicator('pushFolder',true,'Push selected: '+selected.name);
+  $('folderStatus').textContent='Pull: '+(pullHandle?.name||'selected photos')+' · Push: '+selected.name;
+ }catch(e){if(e.name!=='AbortError')alert('Push folder unavailable: '+e.message)}
 };
 async function saveBatchPhoto(canvas,name){
  
