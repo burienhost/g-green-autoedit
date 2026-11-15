@@ -1847,10 +1847,24 @@ $('pushDownloads').onclick=snapicSelectDownloads;
   }
   choosing=true;
   try{
-   // Read/write access is requested by the browser during the folder selection.
-   const directory=await window.showDirectoryPicker({mode:'readwrite'});
+   // Select with read access first. A separate write-permission request
+   // allows Chromium to show the grant prompt after the folder is chosen.
+   const directory=await window.showDirectoryPicker({mode:'read'});
    if(!directory||directory.kind!=='directory'||typeof directory.getFileHandle!=='function'){
-    throw new Error('The browser did not provide a writable directory handle.');
+    throw new Error('The browser did not provide a directory handle.');
+   }
+   let permission='prompt';
+   if(typeof directory.queryPermission==='function'){
+    permission=await directory.queryPermission({mode:'readwrite'});
+   }
+   if(permission!=='granted'){
+    if(typeof directory.requestPermission!=='function'){
+     throw new Error('This browser cannot request write access to the selected folder.');
+    }
+    permission=await directory.requestPermission({mode:'readwrite'});
+   }
+   if(permission!=='granted'){
+    throw new Error('Write permission was not granted. Select the folder again and approve the browser permission request.');
    }
    // Never replace an existing destination until selection has succeeded.
    pushHandle=directory;
