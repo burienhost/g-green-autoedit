@@ -1828,25 +1828,27 @@ function snapicFolderIndicator(id,success,detail){
 }
 $('pushDownloads').onclick=snapicSelectDownloads;
 $('pushFolder').onclick=async()=>{
+ // Use the original working desktop flow: request a writable directory directly
+ // from the click gesture. Downloads remains the default until a handle exists.
  if(typeof window.showDirectoryPicker!=='function'){
-  snapicConfirm('Push unsupported','This browser does not expose writable folder selection. Try current Edge or Chrome on desktop.');
+  snapicConfirm('Custom folder unavailable','This browser cannot save directly to a chosen folder. Downloads remains available.');
   return;
  }
  try{
-  // Do not call requestPermission during folder selection. On Edge, this may
-  // throw SecurityError after the picker resolves and discard a valid handle.
-  // Select the directory without demanding write permission inside the picker.
-  // Edge may reject readwrite picker requests as AbortError even after selection.
-  const handle=await window.showDirectoryPicker({mode:'read'});
-  if(!handle||handle.kind!=='directory'||typeof handle.getFileHandle!=='function')throw Error('The browser did not provide a writable directory handle.');
+  const handle=await window.showDirectoryPicker({mode:'readwrite'});
+  if(!handle||handle.kind!=='directory'||typeof handle.getFileHandle!=='function')throw Error('No usable folder handle was returned.');
   pushHandle=handle;
   pushDownloadsExplicit=false;
   snapicFolderIndicator('pushFolder',true,'Push selected: '+handle.name);
-  snapicConfirm('Push folder selected',handle.name+' is selected. SNAPIC will request write permission before exporting.');
+  snapicConfirm('Push folder selected',handle.name+' will receive completed photographs.');
  }catch(e){
-  if(e.name==='AbortError'){console.warn('[SNAPIC Push picker AbortError]',e);snapicConfirm('Custom folder unavailable','Downloads remains the default. Edge did not complete custom folder selection.');return}
-  console.error('[SNAPIC Push picker]',e?.name,e?.message,e);
-  snapicConfirm('Push selection failed',(e?.name||'Error')+': '+(e?.message||'Unknown browser error'));
+  // A cancelled picker must not discard an existing valid destination.
+  console.warn('[SNAPIC Push selection]',e?.name,e?.message,e);
+  if(e?.name==='AbortError'){
+   snapicConfirm('Folder unchanged','No new custom destination was granted. '+(snapicPushReady()?'Your previous folder is still selected.':'Downloads remains the default.'));
+  }else{
+   snapicConfirm('Folder selection failed',(e?.name||'Error')+': '+(e?.message||'Unknown error'));
+  }
  }
 };
 async function saveBatchPhoto(canvas,name){
