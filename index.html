@@ -1827,15 +1827,48 @@ function snapicFolderIndicator(id,success,detail){
  if(!success&&check)check.remove();
 }
 $('pushDownloads').onclick=snapicSelectDownloads;
-$('pushFolder').onclick=async()=>{
- if(typeof window.showDirectoryPicker!=='function'){snapicConfirm('Custom folder unavailable','Downloads remains the default on this browser.');return}
- try{const selected=await window.showDirectoryPicker({mode:'readwrite'});
-  if(!selected||selected.kind!=='directory')throw Error('No directory selected');
-  pushHandle=selected;pushDownloadsExplicit=false;
-  snapicFolderIndicator('pushFolder',true,'Push selected: '+selected.name);
-  $('folderStatus').textContent='Pull: '+(pullHandle?.name||'selected photos')+' · Push: '+selected.name;
- }catch(e){if(e.name!=='AbortError')alert('Push folder unavailable: '+e.message)}
-};
+// Independent Push destination controller. Exporters continue to use pushHandle.
+// The directory picker must be called synchronously from a trusted user click.
+(function installPushDestination(){
+ const previous=document.getElementById('pushFolder');
+ if(!previous)return;
+ const button=document.createElement('button');
+ button.type='button';
+ button.id='pushFolder';
+ button.textContent='Choose Push folder';
+ button.title='Select a folder for completed JPEG photographs';
+ previous.replaceWith(button);
+ let choosing=false;
+ button.addEventListener('click',async function choosePushDestination(){
+  if(choosing)return;
+  if(typeof window.showDirectoryPicker!=='function'){
+   snapicConfirm('Custom folder unavailable','This browser does not support direct folder saving. Downloads remains available.');
+   return;
+  }
+  choosing=true;
+  try{
+   // Read/write access is requested by the browser during the folder selection.
+   const directory=await window.showDirectoryPicker({mode:'readwrite'});
+   if(!directory||directory.kind!=='directory'||typeof directory.getFileHandle!=='function'){
+    throw new Error('The browser did not provide a writable directory handle.');
+   }
+   // Never replace an existing destination until selection has succeeded.
+   pushHandle=directory;
+   pushDownloadsExplicit=false;
+   snapicFolderIndicator('pushFolder',true,'Push selected: '+directory.name);
+   $('folderStatus').textContent='Pull: '+(pullHandle?.name||'selected photos')+' · Push: '+directory.name;
+   snapicConfirm('Push folder selected',directory.name+' is now the destination for edited photographs.');
+  }catch(error){
+   console.warn('[SNAPIC Push destination]',error?.name,error?.message,error);
+   if(error?.name==='AbortError'){
+    snapicConfirm('Push folder not selected','The browser did not grant access to the selected folder. '+(snapicPushReady()?'Your previous destination is unchanged.':'Downloads remains available.'));
+   }else{
+    snapicConfirm('Push folder unavailable',(error?.message||String(error)));
+   }
+  }finally{choosing=false}
+ });
+})();
+
 async function saveBatchPhoto(canvas,name){
  
  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('JPEG encoding failed')),'image/jpeg',.92));
