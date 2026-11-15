@@ -1829,27 +1829,22 @@ function snapicFolderIndicator(id,success,detail){
 $('pushDownloads').onclick=snapicSelectDownloads;
 $('pushFolder').onclick=async()=>{
  if(typeof window.showDirectoryPicker!=='function'){
-  snapicFolderIndicator('pushFolder',false,'Direct folder writing unavailable in this browser');
-  snapicConfirm('Push unavailable','Your browser cannot select a writable output folder. Downloads remain available.');
+  snapicConfirm('Push unsupported','This browser does not expose writable folder selection. Try current Edge or Chrome on desktop.');
   return;
  }
  try{
-  // Push must request readwrite access; read-only handles cannot export photos.
+  // Do not call requestPermission during folder selection. On Edge, this may
+  // throw SecurityError after the picker resolves and discard a valid handle.
   const handle=await window.showDirectoryPicker({id:'snapic-push',mode:'readwrite'});
-  if(!handle||handle.kind!=='directory'||typeof handle.getFileHandle!=='function')throw Error('No usable output folder returned by the browser.');
-  // Validate that this is a writable destination before confirming selection.
-  if(typeof handle.queryPermission==='function'){
-   let state=await handle.queryPermission({mode:'readwrite'});
-   if(state!=='granted'&&typeof handle.requestPermission==='function')state=await handle.requestPermission({mode:'readwrite'});
-   if(state!=='granted')throw Error('Write permission was not granted for '+handle.name+'. Allow write access when your browser asks.');
-  }
-  pushHandle=handle;pushDownloadsExplicit=false;
-  snapicFolderIndicator('pushFolder',true,'Push selected: '+handle.name+'. Write access will be checked before export.');
-  snapicConfirm('Push ready',handle.name+' selected with write permission. Edited JPGs will be saved here.');
+  if(!handle||handle.kind!=='directory'||typeof handle.getFileHandle!=='function')throw Error('The browser did not provide a writable directory handle.');
+  pushHandle=handle;
+  pushDownloadsExplicit=false;
+  snapicFolderIndicator('pushFolder',true,'Push selected: '+handle.name);
+  snapicConfirm('Push folder selected',handle.name+' is selected. SNAPIC will verify write access before exporting.');
  }catch(e){
-  if(e.name==='AbortError')return;
-  console.error('Push selection failed',e);
-  snapicConfirm('Push selection failed',e.message);
+  if(e.name==='AbortError'){snapicConfirm('Push cancelled','No destination change was made.');return}
+  console.error('[SNAPIC Push picker]',e?.name,e?.message,e);
+  snapicConfirm('Push selection failed',(e?.name||'Error')+': '+(e?.message||'Unknown browser error'));
  }
 };
 async function saveBatchPhoto(canvas,name){
