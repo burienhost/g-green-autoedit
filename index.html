@@ -1792,32 +1792,42 @@ $('pullFolder').onclick=()=>{
  $('folderStatus').textContent='Pull: select your photo folder. SNAPIC will automatically load every supported photograph it contains.';
  picker.click();
 };
+async function snapicPushPermission(handle){
+ // Edge/Chromium versions differ: the picker itself may grant write access,
+ // while queryPermission/requestPermission are not universally implemented.
+ if(typeof handle.queryPermission!=='function')return true;
+ const state=await handle.queryPermission({mode:'readwrite'});
+ if(state==='granted')return true;
+ if(typeof handle.requestPermission!=='function')return state!=='denied';
+ return (await handle.requestPermission({mode:'readwrite'}))==='granted';
+}
+function snapicPushReady(){
+ return !!pushHandle&&pushHandle.kind==='directory'&&typeof pushHandle.getFileHandle==='function';
+}
 $('pushFolder').onclick=async()=>{
- if(!('showDirectoryPicker' in window)){
-  pushHandle=null;
-  $('folderStatus').textContent='Push destination: browser Downloads (direct folder writing is unavailable).';
-  snapicConfirm('Push destination set','Browser Downloads will be used. No photographs have been exported yet.');
+ if(typeof window.showDirectoryPicker!=='function'){
+  $('folderStatus').textContent='Direct Push folder access is unavailable in this browser. Exports will use browser Downloads.';
+  snapicConfirm('Push folder unavailable','Use a compatible desktop browser to select an output folder.');
   return;
  }
  try{
   const selectedHandle=await window.showDirectoryPicker({mode:'readwrite'});
-  const permission=await selectedHandle.queryPermission({mode:'readwrite'});
-  let granted=permission==='granted';
-  if(!granted)granted=(await selectedHandle.requestPermission({mode:'readwrite'}))==='granted';
-  if(!granted){$('folderStatus').textContent='Push permission not granted. Choose another folder or use browser Downloads.';return}
+  if(!selectedHandle||selectedHandle.kind!=='directory'||typeof selectedHandle.getFileHandle!=='function')throw Error('The browser did not return a usable destination folder.');
+  const allowed=await snapicPushPermission(selectedHandle);
+  if(!allowed){$('folderStatus').textContent='Push folder not authorised. Please allow folder access and try again.';return}
   pushHandle=selectedHandle;
-  $('folderStatus').textContent='Push destination ready: '+pushHandle.name+'. Finished JPGs will be saved here when editing completes. No files exported yet.';
-  snapicConfirm('Push folder selected',pushHandle.name+' is ready to receive edited JPGs. No photographs have been exported yet.');
+  $('folderStatus').textContent='Push ready: '+pushHandle.name+'. Finished JPGs will be written here after editing. No files exported yet.';
+  snapicConfirm('Push folder ready',pushHandle.name+' selected. Finished photographs will be saved here when processing completes.');
  }catch(e){
   if(e.name==='AbortError')return;
   console.error('Push folder selection failed',e);
-  $('folderStatus').textContent='Push folder selection failed: '+e.message;
+  $('folderStatus').textContent='Push selection failed: '+e.message;
  }
 };
 async function saveBatchPhoto(canvas,name){
  const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(Error('JPEG encoding failed')),'image/jpeg',.92));
  const filename=name.replace(/\.[^.]+$/,'')+'-g-green.jpg';
- if(pushHandle){
+ if(snapicPushReady()){
   const handle=await pushHandle.getFileHandle(filename,{create:true});
   const stream=await handle.createWritable();try{await stream.write(blob);await stream.close()}catch(e){await stream.abort();throw e}
  }else{
@@ -1827,7 +1837,7 @@ async function saveBatchPhoto(canvas,name){
 }
 $('batch').onclick=async()=>{
  if(batchRunning||exportRunning||!photos.length)return;
- if(!pushHandle){if(!confirm('Without a Push folder, the browser cannot verify that downloaded photos were saved or prevent charging again on retries. One credit is charged per download attempt. Continue?'))return}
+ if(!snapicPushReady()){if(!confirm('Without a Push folder, the browser cannot verify that downloaded photos were saved or prevent charging again on retries. One credit is charged per download attempt. Continue?'))return}
  try{if((await editorRefreshCredits())<=0){alert('You have no editing credits. Purchase credits to continue.');return}}catch(e){alert('Cannot verify your credits. Please try again.');return}
  batchRunning=true;cancelRequested=false;await acquireBatchWakeLock();batchStartedAt=performance.now();batchChecked=0;batchSuccessCount=0;updateBatchMonitor('Batch started','Preparing first photograph');batchTimer=setInterval(()=>updateBatchMonitor('Editing in progress',$('batchCurrent').textContent),1000);$('batch').disabled=true;$('cancelBatch').disabled=false;$('process').disabled=true;
  let projectRecordId=null;try{const user=await authRequest('/auth/v1/user','GET',null,await authToken());const created=await creditApi('autoedit_projects',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({user_id:user.id,name:($('project').value||'Untitled project').slice(0,160),mode:$('mode').value,total:photos.length,status:'running'})});projectRecordId=created[0]?.id||null}catch(e){console.warn('Project history could not be started',e)}
