@@ -1012,7 +1012,7 @@ const workspaceTabs=[
 {id:'culling',label:'Smart Culling',roles:['customer','admin']},
 {id:'history',label:'History & Statements',roles:['customer','admin']},
 {id:'credits',label:'Buy Credits',roles:['customer']},
-{id:'account',label:'My Account',roles:['customer']},
+{id:'account',label:'My Account',roles:['customer','admin']},
 {id:'users',label:'User Management',roles:['admin']},
 {id:'guides',label:'How-to Guides',roles:['admin']},
 {id:'eft',label:'EFT & Credits',roles:['admin']},
@@ -1091,7 +1091,7 @@ $('howtoGuideSelect').onchange=howtoAdminPopulate;
 $('howtoGuideReload').onclick=howtoAdminLoad;
 $('howtoGuideSave').onclick=async()=>{const b=$('howtoGuideSave'),msg=$('howtoAdminStatus');const id=$('howtoGuideSelect').value,title=$('howtoGuideTitle').value.trim(),steps=$('howtoGuideSteps').value.trim();if(!title||!steps){msg.textContent='Title and instructions are required.';return}b.disabled=true;msg.textContent='Saving…';try{const user=await authRequest('/auth/v1/user','GET',null,await authToken());await creditApi('snapic_howto_guides?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id,title,steps,updated_by:user.id,updated_at:new Date().toISOString()})});howtoCache=null;msg.textContent='Guide saved and published.'}catch(e){msg.textContent='Could not save guide: '+e.message}finally{b.disabled=false}};
 async function profilePhoneLoad(){try{const user=await authRequest('/auth/v1/user','GET',null,await authToken());const rows=await creditApi('profiles?select=phone_number&id=eq.'+encodeURIComponent(user.id));$('profilePhone').value=rows[0]?.phone_number||'';$('profilePhoneStatus').textContent=''}catch(e){$('profilePhoneStatus').textContent='Unable to load phone: '+e.message}}
-$('profilePhoneSave').onclick=async()=>{const btn=$('profilePhoneSave'),msg=$('profilePhoneStatus'),phone=$('profilePhone').value.trim();if(phone&&!/^\\+?[0-9 ()-]{7,20}$/.test(phone)){msg.textContent='Enter a valid phone number (7–20 characters).';return}btn.disabled=true;msg.textContent='Saving…';try{const user=await authRequest('/auth/v1/user','GET',null,await authToken());await creditApi('profiles?id=eq.'+encodeURIComponent(user.id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({phone_number:phone||null})});msg.textContent='Phone number saved.'}catch(e){msg.textContent='Could not save: '+e.message}finally{btn.disabled=false}}
+$('profilePhoneSave').onclick=async()=>{const btn=$('profilePhoneSave'),msg=$('profilePhoneStatus'),phone=$('profilePhone').value.trim();if(phone&&!/^[+]?[0-9 ()-]{7,20}$/.test(phone)){msg.textContent='Enter a valid phone number (7–20 characters).';return}btn.disabled=true;msg.textContent='Saving…';try{const user=await authRequest('/auth/v1/user','GET',null,await authToken());await creditApi('profiles?id=eq.'+encodeURIComponent(user.id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({phone_number:phone||null})});msg.textContent='Phone number saved.'}catch(e){msg.textContent='Could not save: '+e.message}finally{btn.disabled=false}}
 function workspaceShow(id){
  const allowed=workspaceTabs.filter(t=>t.roles.includes(workspaceRole));
  if(!allowed.some(t=>t.id===id))id='home';
@@ -1115,7 +1115,7 @@ function workspaceRender(loggedIn,role,email){
  workspaceShow(workspaceTabs.some(t=>t.id===workspaceActive&&t.roles.includes(role))?workspaceActive:'home');
 }
 try{workspacePrepare()}catch(error){console.error('SNAPIC workspace initialization failed:',error);document.body.dataset.workspaceInitError='true'}
-function lpOpenAuth(mode){if(authSession){lpShowDashboard();return}document.getElementById('authShell').hidden=false;document.getElementById(mode==='register'?'authRegister':'authLogin').click();document.getElementById('authEmail').focus()}
+function lpOpenAuth(mode){if(authVerified&&authSession){lpShowDashboard();return}document.getElementById('authShell').hidden=false;document.getElementById(mode==='register'?'authRegister':'authLogin').click();document.getElementById('authEmail').focus()}
 document.querySelectorAll('[data-lp-auth]').forEach(b=>b.addEventListener('click',()=>lpOpenAuth(b.dataset.lpAuth)));
 document.getElementById('lpCloseAuth').onclick=()=>{document.getElementById('authShell').hidden=true};
 function lpShowLanding(){document.body.classList.add('landing-view');document.getElementById('snapicLanding').hidden=false;document.getElementById('authShell').hidden=true;window.scrollTo(0,0)}
